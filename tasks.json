@@ -15,6 +15,22 @@
       "status": "Por hacer",
       "assigned": null,
       "created": "2026-07-02T17:40:27.810Z"
+    },
+    {
+      "id": "1783014204052",
+      "title": "Verificar webhook de tareas",
+      "category": "IA",
+      "state": "todo",
+      "delegated": null,
+      "date": "2026-07-02"
+    },
+    {
+      "id": "1783016145297",
+      "title": "Test Taylor Swift",
+      "category": "Marketing",
+      "state": "todo",
+      "delegated": null,
+      "date": "2026-07-02"
     }
   ]
 }
