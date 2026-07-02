@@ -1045,6 +1045,29 @@
       }, {});
     }
 
+    // Paleta de colores por categoría (misma tendencia: teales, azul, naranja, lavanda, coral)
+    const categoryPalette = [
+      '#1fa8a6', // teal
+      '#003d5c', // azul profundo
+      '#ff9a44', // naranja
+      '#0d7a93', // azul-teal
+      '#b8a8c9', // lavanda
+      '#6dd4d4', // teal claro
+      '#e8896b', // coral
+      '#7a9e7e', // salvia
+      '#d4a94a', // dorado
+      '#9a7aa0'  // malva
+    ];
+
+    // Color estable por nombre de categoría (siempre el mismo color para la misma categoría)
+    function getCategoryColor(category) {
+      let hash = 0;
+      for (let i = 0; i < category.length; i++) {
+        hash = (hash * 31 + category.charCodeAt(i)) >>> 0;
+      }
+      return categoryPalette[hash % categoryPalette.length];
+    }
+
     function render() {
       renderCategorias();
       renderEstados();
@@ -1064,15 +1087,18 @@
       Object.keys(byCategory).sort().forEach(category => {
         const categoryTasks = byCategory[category];
 
+        const color = getCategoryColor(category);
+
         const card = document.createElement('div');
         card.className = 'category-card';
+        card.style.borderTop = `3px solid ${color}`;
 
         const header = document.createElement('div');
         header.className = 'category-header';
         header.innerHTML = `
-          <div class="category-indicator" style="background: var(--cat-color, #1fa8a6)"></div>
-          <div class="category-name">${category}</div>
-          <div class="category-count">${categoryTasks.length}</div>
+          <div class="category-indicator" style="background: ${color}"></div>
+          <div class="category-name" style="color: ${color}">${category}</div>
+          <div class="category-count" style="background: ${color}1a; color: ${color}">${categoryTasks.length}</div>
         `;
         card.appendChild(header);
 
