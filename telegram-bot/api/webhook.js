@@ -63,8 +63,9 @@ async function saveTasksToGithub(tasksData) {
     }
 
     const content = Buffer.from(JSON.stringify(tasksData, null, 2)).toString('base64');
+    const lastTask = tasksData.tasks[tasksData.tasks.length - 1];
     const body = {
-      message: `Add task: ${tasksData.tasks[tasksData.tasks.length - 1].description}`,
+      message: `Add task: ${lastTask.title || lastTask.description || 'Nueva tarea'}`,
       content,
       branch: GITHUB_BRANCH
     };

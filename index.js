@@ -43,7 +43,7 @@ async function getTasksFromGithub() {
   }
 }
 
-async function saveTasksToGithub(tasksData) {
+async function saveTasksToGithub(tasksData, message = 'Update tasks') {
   try {
     let sha = null;
     try {
@@ -66,7 +66,7 @@ async function saveTasksToGithub(tasksData) {
 
     const content = Buffer.from(JSON.stringify(tasksData, null, 2)).toString('base64');
     const body = {
-      message: `Add task: ${tasksData.tasks[tasksData.tasks.length - 1].description}`,
+      message: message,
       content,
       branch: GITHUB_BRANCH
     };
@@ -165,7 +165,7 @@ const server = http.createServer(async (req, res) => {
         };
 
         tasksData.tasks.push(newTask);
-        const saved = await saveTasksToGithub(tasksData);
+        const saved = await saveTasksToGithub(tasksData, `Add task: ${category}: ${title}`);
 
         if (saved) {
           await sendMessage(chatId, `✅ Agregada:\n📌 ${category}\n📝 ${title}\n🔄 Aparece en dashboard`);
@@ -192,6 +192,45 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // API para agregar tarea desde dashboard
+  if (req.url === '/api/add-task' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', async () => {
+      try {
+        const { title, category, state = 'todo', delegated = null, date } = JSON.parse(body);
+        if (!title || !category) {
+          res.writeHead(400);
+          res.end(JSON.stringify({ error: 'title and category required' }));
+          return;
+        }
+
+        const tasksData = await getTasksFromGithub();
+        const newTask = {
+          id: Date.now(),
+          title,
+          category,
+          state,
+          delegated,
+          date: date || new Date().toISOString().split('T')[0]
+        };
+
+        tasksData.tasks.push(newTask);
+        const saved = await saveTasksToGithub(tasksData, `Add task: ${category}: ${title}`);
+
+        res.writeHead(200);
+        res.end(JSON.stringify({
+          ok: saved,
+          task: newTask
+        }));
+      } catch (error) {
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: error.message }));
+      }
+    });
+    return;
+  }
+
   // API para eliminar tarea
   if (req.url === '/api/delete-task' && req.method === 'POST') {
     let body = '';
@@ -206,14 +245,60 @@ const server = http.createServer(async (req, res) => {
         }
 
         const tasksData = await getTasksFromGithub();
-        const taskToDelete = tasksData.tasks.find(t => t.id === taskId);
-        tasksData.tasks = tasksData.tasks.filter(t => t.id !== taskId);
+        const taskToDelete = tasksData.tasks.find(t => t.id === taskId || t.id === parseInt(taskId));
+        tasksData.tasks = tasksData.tasks.filter(t => t.id !== taskId && t.id !== parseInt(taskId));
 
-        const saved = await saveTasksToGithub(tasksData);
+        const saved = await saveTasksToGithub(tasksData, `Delete task: ${taskToDelete?.title || taskId}`);
         res.writeHead(200);
         res.end(JSON.stringify({
           ok: saved,
           deleted: taskToDelete?.title || taskToDelete?.description || taskId
+        }));
+      } catch (error) {
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: error.message }));
+      }
+    });
+    return;
+  }
+
+  // API para actualizar tarea
+  if (req.url === '/api/update-task' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', async () => {
+      try {
+        const { taskId, title, category, state, delegated, date } = JSON.parse(body);
+        if (!taskId) {
+          res.writeHead(400);
+          res.end(JSON.stringify({ error: 'taskId required' }));
+          return;
+        }
+
+        const tasksData = await getTasksFromGithub();
+        const taskIndex = tasksData.tasks.findIndex(t => t.id === taskId || t.id === parseInt(taskId));
+
+        if (taskIndex === -1) {
+          res.writeHead(404);
+          res.end(JSON.stringify({ error: 'Task not found' }));
+          return;
+        }
+
+        tasksData.tasks[taskIndex] = {
+          ...tasksData.tasks[taskIndex],
+          ...(title && { title }),
+          ...(category && { category }),
+          ...(state && { state }),
+          ...(delegated !== undefined && { delegated }),
+          ...(date && { date })
+        };
+
+        const updatedTask = tasksData.tasks[taskIndex];
+        const saved = await saveTasksToGithub(tasksData, `Update task: ${updatedTask.title}`);
+        res.writeHead(200);
+        res.end(JSON.stringify({
+          ok: saved,
+          task: updatedTask
         }));
       } catch (error) {
         res.writeHead(500);

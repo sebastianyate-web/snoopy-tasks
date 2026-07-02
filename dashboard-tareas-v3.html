@@ -5,34 +5,38 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tablero de Tareas — Sebastián</title>
   <script>
-    // Sincronizar tareas desde GitHub
-    const GITHUB_OWNER = 'sebastianyate-web';
-    const GITHUB_REPO = 'snoopy-tasks';
-    const GITHUB_RAW = `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/main/tasks.json`;
+    // Sincronizar tareas desde backend
+    const BACKEND_URL = 'https://snoopy-tasks-production.up.railway.app';
+    let isSyncing = false;
 
-    async function syncTasksFromGithub() {
+    async function syncTasksFromBackend() {
+      if (isSyncing) return;
       try {
-        const response = await fetch(GITHUB_RAW);
+        isSyncing = true;
+        const response = await fetch(`${BACKEND_URL}/api/tasks`);
         if (!response.ok) return;
 
         const data = await response.json();
         const remoteTasks = data.tasks || [];
         const localTasks = JSON.parse(localStorage.getItem('snoopy-tasks-v3') || '[]');
 
-        // GitHub es la fuente de verdad: si cambió, sincroniza todo
+        // Backend es la fuente de verdad
         const localJson = JSON.stringify(localTasks.sort((a, b) => a.id - b.id));
         const remoteJson = JSON.stringify(remoteTasks.sort((a, b) => a.id - b.id));
 
         if (localJson !== remoteJson) {
           localStorage.setItem('snoopy-tasks-v3', JSON.stringify(remoteTasks));
-          location.reload(); // Recargar con datos de GitHub
+          if (window.tasksUpdated) window.tasksUpdated();
         }
       } catch (error) {
-        console.log('Sync: sin conexión a GitHub');
+        console.log('Sync: sin conexión al backend');
+      } finally {
+        isSyncing = false;
       }
     }
 
-    setInterval(syncTasksFromGithub, 5000);
+    // Sincronizar cada 10 segundos
+    setInterval(syncTasksFromBackend, 10000);
   </script>
   <style>
     * {
@@ -914,7 +918,7 @@
       }
     }
 
-    function addNewTask() {
+    async function addNewTask() {
       const titleInput = document.getElementById('task-title-input');
       const categoryInput = document.getElementById('task-category-input');
       const title = titleInput.value.trim();
@@ -925,21 +929,25 @@
         return;
       }
 
-      const newId = Math.max(...tasks.map(t => t.id), 0) + 1;
-      tasks.push({
+      const newId = Math.max(...tasks.map(t => parseInt(t.id) || 0), 0) + 1;
+      const newTask = {
         id: newId,
         category: category,
         title: title,
         state: 'todo',
         delegated: null,
         date: new Date().toISOString().split('T')[0]
-      });
+      };
 
+      tasks.push(newTask);
       saveToLocalStorage();
       render();
       titleInput.value = '';
       categoryInput.value = '';
       titleInput.focus();
+
+      // Sincroniza desde backend después de agregar
+      setTimeout(() => syncTasksFromBackend(), 2000);
     }
 
     function groupByCategory(taskList) {
@@ -1112,11 +1120,35 @@
       currentEditingTask = null;
     }
 
-    function saveTask() {
-      if (currentEditingTask) {
+    async function saveTask() {
+      if (!currentEditingTask) return;
+
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/update-task`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            taskId: currentEditingTask.id,
+            title: currentEditingTask.title,
+            category: currentEditingTask.category,
+            state: currentEditingTask.state,
+            delegated: currentEditingTask.delegated,
+            date: currentEditingTask.date
+          })
+        });
+
+        if (!response.ok) {
+          console.error('Save error:', await response.text());
+          alert('⚠️ Error al guardar');
+          return;
+        }
+
         saveToLocalStorage();
         render();
         closeModal();
+      } catch (e) {
+        console.error('Save error:', e);
+        alert('❌ Error de conexión');
       }
     }
 
@@ -1128,22 +1160,41 @@
       }
 
       const taskToDelete = currentEditingTask;
-      tasks.splice(tasks.indexOf(taskToDelete), 1);
-      saveToLocalStorage();
+      const taskIndex = tasks.indexOf(taskToDelete);
 
-      // Eliminar también de GitHub (via backend)
+      if (taskIndex === -1) {
+        console.error('Tarea no encontrada en el array');
+        return;
+      }
+
       try {
-        await fetch('https://snoopy-tasks-production.up.railway.app/api/delete-task', {
+        // Primero elimina del backend (fuente de verdad)
+        const response = await fetch(`${BACKEND_URL}/api/delete-task`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ taskId: taskToDelete.id })
         });
-      } catch (e) {
-        console.log('Error al eliminar de GitHub:', e.message);
-      }
 
-      render();
-      closeModal();
+        const result = await response.json();
+
+        if (!response.ok || !result.ok) {
+          alert('❌ Error al eliminar la tarea');
+          console.error('Delete error:', result);
+          render();
+          closeModal();
+          return;
+        }
+
+        // Solo después de confirmar en backend, elimina localmente
+        tasks.splice(taskIndex, 1);
+        saveToLocalStorage();
+        render();
+        closeModal();
+
+      } catch (e) {
+        alert('❌ Error de conexión al eliminar');
+        console.error('Delete error:', e.message);
+      }
     }
 
     function saveToLocalStorage() {
