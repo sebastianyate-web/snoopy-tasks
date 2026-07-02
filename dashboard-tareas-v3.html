@@ -746,6 +746,7 @@
       <div class="modal-actions">
         <button class="modal-close" id="modal-close">Cancelar</button>
         <button class="modal-save" id="modal-save">Guardar</button>
+        <button id="modal-delete" style="background: #ff6b6b; color: white; border: none; flex: 1;">Eliminar</button>
       </div>
     </div>
   </div>
@@ -841,6 +842,7 @@
     function setupModalEvents() {
       document.getElementById('modal-close').addEventListener('click', closeModal);
       document.getElementById('modal-save').addEventListener('click', saveTask);
+      document.getElementById('modal-delete').addEventListener('click', deleteTask);
       document.querySelector('.modal').addEventListener('click', (e) => {
         if (e.target.id === 'task-modal') closeModal();
       });
@@ -1116,6 +1118,19 @@
         render();
         closeModal();
       }
+    }
+
+    function deleteTask() {
+      if (!currentEditingTask) return;
+
+      if (!confirm(`¿Eliminar "${currentEditingTask.title || currentEditingTask.description}"?`)) {
+        return;
+      }
+
+      tasks.splice(tasks.indexOf(currentEditingTask), 1);
+      saveToLocalStorage();
+      render();
+      closeModal();
     }
 
     function saveToLocalStorage() {
