@@ -157,11 +157,11 @@ const server = http.createServer(async (req, res) => {
         const tasksData = await getTasksFromGithub();
         const newTask = {
           id: Date.now().toString(),
-          description: title,
+          title,
           category,
-          status: 'Por hacer',
-          assigned: null,
-          created: new Date().toISOString()
+          state: 'todo',
+          delegated: null,
+          date: new Date().toISOString().split('T')[0]
         };
 
         tasksData.tasks.push(newTask);
