@@ -1,36 +1,29 @@
 {
   "tasks": [
-    {
-      "id": "1",
-      "description": "Primer tarea desde Telegram",
-      "category": "Test",
-      "status": "Por hacer",
-      "assigned": null,
-      "created": "2026-07-02T00:00:00Z"
-    },
-    {
-      "id": "1783014027810",
-      "description": "Test mensaje 2",
-      "category": "Marketing",
-      "status": "Por hacer",
-      "assigned": null,
-      "created": "2026-07-02T17:40:27.810Z"
-    },
-    {
-      "id": "1783014204052",
-      "title": "Verificar webhook de tareas",
-      "category": "IA",
-      "state": "todo",
-      "delegated": null,
-      "date": "2026-07-02"
-    },
-    {
-      "id": "1783016145297",
-      "title": "Test Taylor Swift",
-      "category": "Marketing",
-      "state": "todo",
-      "delegated": null,
-      "date": "2026-07-02"
-    }
+    { "id": 1, "category": "Raw", "title": "Equivalencias de variedades - Llamada con Oto", "state": "todo", "delegated": null, "date": "2026-07-02" },
+    { "id": 2, "category": "Sofi", "title": "Conteo de devolución de Mono", "state": "todo", "delegated": "Sofi", "date": "2026-07-02" },
+    { "id": 3, "category": "Actualización", "title": "Master Sales", "state": "todo", "delegated": null, "date": "2026-07-02" },
+    { "id": 4, "category": "Seguimiento", "title": "Exportación Chile con Oto", "state": "todo", "delegated": null, "date": "2026-07-02" },
+    { "id": 5, "category": "Raw", "title": "Seguimiento Vials", "state": "todo", "delegated": null, "date": "2026-07-02" },
+    { "id": 6, "category": "Actualización", "title": "Órdenes y equivalencias con las muestras: Barney's Farm, Sean…", "state": "todo", "delegated": null, "date": "2026-07-02" },
+    { "id": 7, "category": "Raw", "title": "Seguimiento Packaging", "state": "todo", "delegated": null, "date": "2026-07-02" },
+    { "id": 8, "category": "Raw", "title": "Stickers y hoodies", "state": "todo", "delegated": "Pau", "date": "2026-07-02" },
+    { "id": 9, "category": "Sofi", "title": "Conteo de devoluciones de Toni", "state": "todo", "delegated": "Sofi", "date": "2026-07-02" },
+    { "id": 10, "category": "Sofi", "title": "Conteo de devoluciones de Jens", "state": "todo", "delegated": "Sofi", "date": "2026-07-02" },
+    { "id": 11, "category": "Sofi", "title": "Coordinación de devolución de Jens", "state": "todo", "delegated": "Sofi", "date": "2026-07-02" },
+    { "id": 12, "category": "Oscar", "title": "Pruebas de germinación en Miami", "state": "todo", "delegated": null, "date": "2026-07-02" },
+    { "id": 13, "category": "Pao", "title": "Respuesta para David", "state": "todo", "delegated": null, "date": "2026-07-02" },
+    { "id": 14, "category": "IA", "title": "Terminar configuración de Ms. Bubbles sin automatización", "state": "todo", "delegated": null, "date": "2026-07-02" },
+    { "id": 15, "category": "IA", "title": "Carpetas de Marketing en Nelly organizadas", "state": "todo", "delegated": null, "date": "2026-07-02" },
+    { "id": 16, "category": "IA", "title": "Tablero de Manu, mejoras del departamento", "state": "todo", "delegated": null, "date": "2026-07-02" },
+    { "id": 17, "category": "IA", "title": "Automatización procesos de marketing de alphatype: Grow Diaries Card y Weekly Breeders Highlight", "state": "todo", "delegated": null, "date": "2026-07-02" },
+    { "id": 18, "category": "Raw/IA", "title": "Brand Book de Raw", "state": "todo", "delegated": null, "date": "2026-07-02" },
+    { "id": 19, "category": "IA", "title": "Brand Book de alphatype", "state": "todo", "delegated": null, "date": "2026-07-02" },
+    { "id": 20, "category": "Marketing Alphatype", "title": "A15 campaña completa", "state": "todo", "delegated": null, "date": "2026-07-02" },
+    { "id": 21, "category": "IA", "title": "Skill de la generación de las fotos de las plantas", "state": "todo", "delegated": null, "date": "2026-07-02" },
+    { "id": 22, "category": "Actualización", "title": "Stock de Miami", "state": "todo", "delegated": null, "date": "2026-07-02" },
+    { "id": 23, "category": "Actualización", "title": "Updated global stock - clientes", "state": "todo", "delegated": null, "date": "2026-07-02" },
+    { "id": 24, "category": "Aparcado", "title": "Página web Alphatype y plataforma de clientes", "state": "parked", "delegated": null, "date": "2026-07-02" },
+    { "id": 25, "category": "Pao", "title": "Revisar las condiciones de precio con Jens", "state": "todo", "delegated": null, "date": "2026-07-02" }
   ]
 }
