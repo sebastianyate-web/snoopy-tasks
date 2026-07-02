@@ -7,6 +7,14 @@
       "status": "Por hacer",
       "assigned": null,
       "created": "2026-07-02T00:00:00Z"
+    },
+    {
+      "id": "1783014027810",
+      "description": "Test mensaje 2",
+      "category": "Marketing",
+      "status": "Por hacer",
+      "assigned": null,
+      "created": "2026-07-02T17:40:27.810Z"
     }
   ]
 }
