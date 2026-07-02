@@ -9,6 +9,24 @@
     const BACKEND_URL = 'https://snoopy-tasks-production.up.railway.app';
     let isSyncing = false;
 
+    // Normaliza cualquier formato de tarea (viejo o nuevo) al formato canónico
+    function normalizeTask(t) {
+      return {
+        id: t.id,
+        category: t.category || 'Sin categoría',
+        title: t.title || t.description || 'Sin título',
+        state: t.state || (t.status === 'Por hacer' ? 'todo' : t.status) || 'todo',
+        delegated: t.delegated !== undefined ? t.delegated : (t.assigned || null),
+        date: t.date || (t.created ? t.created.split('T')[0] : '2026-07-02')
+      };
+    }
+
+    function stableKey(list) {
+      return JSON.stringify(
+        list.map(normalizeTask).sort((a, b) => String(a.id).localeCompare(String(b.id)))
+      );
+    }
+
     async function syncTasksFromBackend() {
       if (isSyncing) return;
       try {
@@ -17,16 +35,20 @@
         if (!response.ok) return;
 
         const data = await response.json();
-        const remoteTasks = data.tasks || [];
+        const remoteTasks = (data.tasks || []).map(normalizeTask);
+
+        // GUARDA: nunca sobrescribir con un remoto vacío (evita pérdida total)
+        if (remoteTasks.length === 0) {
+          console.log('Sync: remoto vacío, se ignora para proteger datos locales');
+          return;
+        }
+
         const localTasks = JSON.parse(localStorage.getItem('snoopy-tasks-v3') || '[]');
 
-        // Backend es la fuente de verdad
-        const localJson = JSON.stringify(localTasks.sort((a, b) => a.id - b.id));
-        const remoteJson = JSON.stringify(remoteTasks.sort((a, b) => a.id - b.id));
-
-        if (localJson !== remoteJson) {
+        if (stableKey(localTasks) !== stableKey(remoteTasks)) {
           localStorage.setItem('snoopy-tasks-v3', JSON.stringify(remoteTasks));
           if (window.tasksUpdated) window.tasksUpdated();
+          console.log('Sync: datos actualizados desde backend');
         }
       } catch (error) {
         console.log('Sync: sin conexión al backend');
@@ -35,8 +57,8 @@
       }
     }
 
-    // Sincronizar cada 10 segundos
-    setInterval(syncTasksFromBackend, 10000);
+    // Sincronizar cada 15 segundos
+    setInterval(syncTasksFromBackend, 15000);
   </script>
   <style>
     * {
@@ -830,6 +852,31 @@
       setupNewTaskForm();
       setupSettings();
       render();
+
+      // Permite que la sincronización re-renderice en vivo
+      window.tasksUpdated = () => {
+        loadFromLocalStorage();
+        rebuildCategoryDropdown();
+        render();
+      };
+
+      // Primer sync inmediato al abrir
+      syncTasksFromBackend();
+    }
+
+    function rebuildCategoryDropdown() {
+      const select = document.getElementById('task-category-input');
+      if (!select) return;
+      const current = select.value;
+      const categories = [...new Set(tasks.map(t => t.category))].sort();
+      select.innerHTML = '<option value="">Seleccionar...</option>';
+      categories.forEach(cat => {
+        const opt = document.createElement('option');
+        opt.value = cat;
+        opt.textContent = cat;
+        select.appendChild(opt);
+      });
+      select.value = current;
     }
 
     function setupTabs() {
@@ -929,9 +976,8 @@
         return;
       }
 
-      const newId = Math.max(...tasks.map(t => parseInt(t.id) || 0), 0) + 1;
       const newTask = {
-        id: newId,
+        id: Date.now(),
         category: category,
         title: title,
         state: 'todo',
@@ -939,6 +985,7 @@
         date: new Date().toISOString().split('T')[0]
       };
 
+      // 1) Aplica local primero (instantáneo)
       tasks.push(newTask);
       saveToLocalStorage();
       render();
@@ -946,8 +993,36 @@
       categoryInput.value = '';
       titleInput.focus();
 
-      // Sincroniza desde backend después de agregar
-      setTimeout(() => syncTasksFromBackend(), 2000);
+      // 2) Empuja al backend para que quede en GitHub (SSOT)
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/add-task`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: newTask.title,
+            category: newTask.category,
+            state: newTask.state,
+            delegated: newTask.delegated,
+            date: newTask.date
+          })
+        });
+        const result = await response.json().catch(() => ({}));
+        if (response.ok && result.ok && result.task) {
+          // Reemplaza el id local por el id que asignó el backend (para sincronizar bien)
+          const idx = tasks.findIndex(t => t.id === newTask.id);
+          if (idx !== -1) {
+            tasks[idx] = normalizeTask(result.task);
+            saveToLocalStorage();
+            render();
+          }
+        } else {
+          console.error('Add backend error:', response.status, result);
+          showToast('⚠️ Agregada local, pero el servidor no confirmó');
+        }
+      } catch (e) {
+        console.error('Add conexión error:', e.message);
+        showToast('⚠️ Agregada local (sin conexión al servidor)');
+      }
     }
 
     function groupByCategory(taskList) {
@@ -1123,47 +1198,44 @@
     async function saveTask() {
       if (!currentEditingTask) return;
 
-      try {
-        console.log('Guardando tarea:', currentEditingTask);
-        const payload = {
-          taskId: currentEditingTask.id,
-          title: currentEditingTask.title,
-          category: currentEditingTask.category,
-          state: currentEditingTask.state,
-          delegated: currentEditingTask.delegated,
-          date: currentEditingTask.date
-        };
-        console.log('Payload:', payload);
+      const payload = {
+        taskId: currentEditingTask.id,
+        title: currentEditingTask.title,
+        category: currentEditingTask.category,
+        state: currentEditingTask.state,
+        delegated: currentEditingTask.delegated,
+        date: currentEditingTask.date
+      };
 
+      // 1) Aplica local primero (instantáneo, el cambio de estado/delegación se ve al toque)
+      saveToLocalStorage();
+      render();
+      closeModal();
+
+      // 2) Sincroniza con backend en segundo plano (best-effort)
+      try {
         const response = await fetch(`${BACKEND_URL}/api/update-task`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
-
-        const responseText = await response.text();
-        console.log('Response status:', response.status);
-        console.log('Response body:', responseText);
-
         if (!response.ok) {
-          console.error('Save error:', responseText);
-          alert(`❌ Error al guardar (${response.status}): ${responseText}`);
-          return;
+          const txt = await response.text();
+          console.error('Save backend error:', response.status, txt);
+          showToast('⚠️ Guardado local, pero el servidor no confirmó');
+        } else {
+          console.log('Tarea actualizada en backend:', payload.taskId);
         }
-
-        saveToLocalStorage();
-        render();
-        closeModal();
       } catch (e) {
-        console.error('Save error:', e);
-        alert(`❌ Error de conexión: ${e.message}`);
+        console.error('Save conexión error:', e.message);
+        showToast('⚠️ Guardado local (sin conexión al servidor)');
       }
     }
 
     async function deleteTask() {
       if (!currentEditingTask) return;
 
-      if (!confirm(`¿Eliminar "${currentEditingTask.title || currentEditingTask.description}"?`)) {
+      if (!confirm(`¿Eliminar "${currentEditingTask.title}"?`)) {
         return;
       }
 
@@ -1175,43 +1247,45 @@
         return;
       }
 
+      // 1) Aplica local primero (instantáneo, nunca falla)
+      tasks.splice(taskIndex, 1);
+      saveToLocalStorage();
+      render();
+      closeModal();
+
+      // 2) Sincroniza con backend en segundo plano (best-effort)
       try {
-        console.log('Eliminando tarea:', taskToDelete.id);
-        // Primero elimina del backend (fuente de verdad)
         const response = await fetch(`${BACKEND_URL}/api/delete-task`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ taskId: taskToDelete.id })
         });
-
-        const responseText = await response.text();
-        console.log('Delete response status:', response.status);
-        console.log('Delete response body:', responseText);
-
-        let result = {};
-        try {
-          result = JSON.parse(responseText);
-        } catch (e) {
-          console.error('Error parsing response:', e);
-        }
-
+        const result = await response.json().catch(() => ({}));
         if (!response.ok || !result.ok) {
-          alert(`❌ Error al eliminar la tarea (${response.status})`);
-          console.error('Delete error:', result);
-          closeModal();
-          return;
+          console.error('Delete backend error:', response.status, result);
+          showToast('⚠️ Eliminada local, pero el servidor no confirmó');
+        } else {
+          console.log('Tarea eliminada del backend:', taskToDelete.id);
         }
-
-        // Solo después de confirmar en backend, elimina localmente
-        tasks.splice(taskIndex, 1);
-        saveToLocalStorage();
-        render();
-        closeModal();
-
       } catch (e) {
-        alert(`❌ Error de conexión al eliminar: ${e.message}`);
-        console.error('Delete error:', e.message);
+        console.error('Delete conexión error:', e.message);
+        showToast('⚠️ Eliminada local (sin conexión al servidor)');
       }
+    }
+
+    // Notificación no bloqueante (reemplaza los alert que rompían el flujo)
+    function showToast(msg) {
+      let toast = document.getElementById('snoopy-toast');
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'snoopy-toast';
+        toast.style.cssText = 'position:fixed;bottom:80px;right:20px;background:#003d5c;color:white;padding:12px 18px;border-radius:10px;font-size:13px;z-index:2000;box-shadow:0 4px 16px rgba(0,0,0,0.2);max-width:300px;transition:opacity 0.3s;';
+        document.body.appendChild(toast);
+      }
+      toast.textContent = msg;
+      toast.style.opacity = '1';
+      clearTimeout(toast._timer);
+      toast._timer = setTimeout(() => { toast.style.opacity = '0'; }, 3500);
     }
 
     function saveToLocalStorage() {
@@ -1222,9 +1296,15 @@
       const saved = localStorage.getItem('snoopy-tasks-v3');
       if (saved) {
         const loaded = JSON.parse(saved);
-        tasks.length = 0;
-        tasks.push(...loaded);
+        // Solo reemplaza si hay tareas (nunca vaciar por accidente)
+        if (Array.isArray(loaded) && loaded.length > 0) {
+          tasks.length = 0;
+          tasks.push(...loaded.map(normalizeTask));
+          return;
+        }
       }
+      // localStorage vacío: sembrar con las tareas por defecto y guardarlas
+      saveToLocalStorage();
     }
 
     function exportTasks() {
