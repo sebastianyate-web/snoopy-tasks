@@ -1,0 +1,14 @@
+{
+  "name": "snoopy-tasks",
+  "version": "1.0.0",
+  "description": "Telegram bot + Dashboard para gestión de tareas",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.2"
+  }
+}

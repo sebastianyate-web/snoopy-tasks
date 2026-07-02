@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tablero de Tareas — Sebastián</title>
+  <script>
+    // Sincronizar tareas desde GitHub
+    const GITHUB_OWNER = 'sebastianyate-web';
+    const GITHUB_REPO = 'snoopy-tasks';
+    const GITHUB_RAW = `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/main/tasks.json`;
+
+    async function syncTasksFromGithub() {
+      try {
+        const response = await fetch(GITHUB_RAW);
+        if (!response.ok) return;
+
+        const data = await response.json();
+        const remoteTasks = data.tasks || [];
+        const localTasks = JSON.parse(localStorage.getItem('snoopy-tasks-v3') || '[]');
+
+        const localIds = new Set(localTasks.map(t => t.id));
+        const newTasks = remoteTasks.filter(t => !localIds.has(t.id));
+
+        if (newTasks.length > 0) {
+          localTasks.push(...newTasks);
+          localStorage.setItem('snoopy-tasks-v3', JSON.stringify(localTasks));
+          location.reload(); // Recargar para mostrar nuevas tareas
+        }
+      } catch (error) {
+        console.log('Sync: sin conexión a GitHub');
+      }
+    }
+
+    setInterval(syncTasksFromGithub, 5000);
+  </script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+      background: #f5f7f9;
+      color: #2c3e50;
+      padding: 32px 24px;
+      line-height: 1.6;
+    }
+
+    header {
+      max-width: 1400px;
+      margin: 0 auto 32px;
+    }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 300;
+      letter-spacing: -0.8px;
+      margin-bottom: 8px;
+      color: #003d5c;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: #7a8fa3;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      font-weight: 500;
+      margin-bottom: 20px;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 2px solid #e0e8f0;
+      margin-bottom: 30px;
+    }
+
+    .tab-btn {
+      padding: 12px 20px;
+      border: none;
+      background: transparent;
+      font-size: 14px;
+      font-weight: 500;
+      color: #7a8fa3;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      transition: all 0.3s;
+      font-family: inherit;
+    }
+
+    .tab-btn:hover {
+      color: #1fa8a6;
+    }
+
+    .tab-btn.active {
+      color: #1fa8a6;
+      border-bottom-color: #1fa8a6;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    button, select {
+      padding: 9px 14px;
+      border: 1px solid #d4dce6;
+      border-radius: 12px;
+      background: white;
+      font-size: 13px;
+      color: #2c3e50;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-family: inherit;
+      font-weight: 500;
+    }
+
+    button:hover, select:hover {
+      border-color: #1fa8a6;
+      background: #f0fffe;
+    }
+
+    button:focus, select:focus {
+      outline: none;
+      border-color: #1fa8a6;
+      box-shadow: 0 0 0 3px rgba(31, 168, 166, 0.1);
+    }
+
+    /* Formulario nueva tarea */
+    .new-task-form {
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 30px;
+      border: 1px solid #e0e8f0;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+
+    .form-title {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #7a8fa3;
+      margin-bottom: 14px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 12px;
+      align-items: end;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      color: #7a8fa3;
+    }
+
+    .form-group input,
+    .form-group select {
+      padding: 10px 12px;
+      border: 1px solid #d4dce6;
+      border-radius: 10px;
+      font-size: 13px;
+      font-family: inherit;
+    }
+
+    .form-group input {
+      color: #2c3e50;
+    }
+
+    .form-group input::placeholder {
+      color: #b8a8c9;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: #1fa8a6;
+      box-shadow: 0 0 0 3px rgba(31, 168, 166, 0.1);
+    }
+
+    #add-task-btn {
+      padding: 10px 20px;
+      background: #1fa8a6;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 13px;
+    }
+
+    #add-task-btn:hover {
+      background: #0d7a93;
+      border-color: #0d7a93;
+    }
+
+    .settings-badge {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #1fa8a6;
+      color: white;
+      padding: 10px 16px;
+      border-radius: 50px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 12px rgba(31, 168, 166, 0.3);
+    }
+
+    .settings-badge:hover {
+      background: #0d7a93;
+      transform: translateY(-2px);
+    }
+
+    .settings-modal {
+      display: none;
+    }
+
+    .settings-modal.active {
+      display: flex;
+    }
+
+    @media (max-width: 768px) {
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .main-container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    /* VIEW 1: POR CATEGORÍA */
+    .categories-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 20px;
+    }
+
+    .category-card {
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
+      border: 1px solid #e0e8f0;
+      transition: all 0.3s;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+
+    .category-card:hover {
+      border-color: #1fa8a6;
+      box-shadow: 0 4px 12px rgba(31, 168, 166, 0.12);
+      transform: translateY(-2px);
+    }
+
+    .category-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #f0f4f8;
+    }
+
+    .category-indicator {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .category-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: #2c3e50;
+      flex: 1;
+    }
+
+    .category-count {
+      font-size: 12px;
+      background: #f0f4f8;
+      color: #7a8fa3;
+      padding: 3px 8px;
+      border-radius: 8px;
+      font-weight: 500;
+    }
+
+    .task-item {
+      background: #fafbfc;
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 10px;
+      font-size: 12px;
+      color: #2c3e50;
+      cursor: pointer;
+      transition: all 0.2s;
+      border-left: 4px solid #d4dce6;
+      position: relative;
+    }
+
+    .task-item:hover {
+      background: #f5f7f9;
+      border-left-color: #1fa8a6;
+      box-shadow: 0 2px 8px rgba(31, 168, 166, 0.1);
+    }
+
+    .task-item.state-todo {
+      background: #fffaf0;
+      border-left-color: #ff9a44;
+    }
+
+    .task-item.state-todo:hover {
+      background: #fff5e6;
+    }
+
+    .task-item.state-progress {
+      border-left-color: #1fa8a6;
+    }
+
+    .task-item.state-done {
+      border-left-color: #6dd4d4;
+      opacity: 0.75;
+    }
+
+    .task-item.state-parked {
+      border-left-color: #b8a8c9;
+      opacity: 0.6;
+    }
+
+    .task-title {
+      font-weight: 500;
+      margin-bottom: 8px;
+      line-height: 1.3;
+    }
+
+    .task-meta {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-top: 8px;
+    }
+
+    .task-state {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      font-weight: 600;
+      background: rgba(31, 168, 166, 0.15);
+      color: #0d7a93;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    .task-delegated {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      font-weight: 600;
+      background: #d4f5f3;
+      color: #0d7a93;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    .task-date {
+      font-size: 10px;
+      color: #b8a8c9;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* VIEW 2: KANBAN POR ESTADO */
+    .kanban-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 24px;
+    }
+
+    .kanban-column {
+      background: white;
+      border-radius: 16px;
+      border: 1px solid #e0e8f0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .kanban-header {
+      padding: 16px;
+      font-weight: 600;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid #e0e8f0;
+    }
+
+    .kanban-header.state-todo {
+      background: #fffaf0;
+      color: #ff9a44;
+    }
+
+    .kanban-header.state-progress {
+      background: #f0fffe;
+      color: #1fa8a6;
+    }
+
+    .kanban-header.state-done {
+      background: #f0fffe;
+      color: #6dd4d4;
+    }
+
+    .kanban-header.state-parked {
+      background: #f5f3f8;
+      color: #b8a8c9;
+    }
+
+    .kanban-indicator {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .kanban-count {
+      margin-left: auto;
+      font-size: 12px;
+      background: rgba(0, 0, 0, 0.08);
+      padding: 2px 8px;
+      border-radius: 8px;
+      font-weight: 500;
+    }
+
+    .kanban-cards {
+      padding: 12px;
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .kanban-card {
+      background: white;
+      border: 1px solid #e0e8f0;
+      border-radius: 10px;
+      padding: 12px;
+      cursor: grab;
+      transition: all 0.2s;
+      border-left: 4px solid #d4dce6;
+    }
+
+    .kanban-card:hover {
+      border-color: #1fa8a6;
+      box-shadow: 0 4px 12px rgba(31, 168, 166, 0.15);
+    }
+
+    .kanban-card.state-todo {
+      background: #fffaf0;
+      border-left-color: #ff9a44;
+    }
+
+    .kanban-card.state-progress {
+      border-left-color: #1fa8a6;
+    }
+
+    .kanban-card.state-done {
+      border-left-color: #6dd4d4;
+    }
+
+    .kanban-card.state-parked {
+      border-left-color: #b8a8c9;
+    }
+
+    .kanban-card-title {
+      font-weight: 500;
+      margin-bottom: 10px;
+      font-size: 13px;
+      line-height: 1.3;
+    }
+
+    .kanban-card-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 11px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 32px 16px;
+      color: #d4dce6;
+      font-size: 13px;
+    }
+
+    /* Modal para acciones */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      animation: fadeIn 0.2s;
+    }
+
+    .modal.active {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+      animation: slideIn 0.3s;
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateY(-20px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .modal-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #003d5c;
+      margin-bottom: 16px;
+    }
+
+    .modal-task-name {
+      font-size: 12px;
+      color: #7a8fa3;
+      margin-bottom: 20px;
+      padding: 12px;
+      background: #f5f7f9;
+      border-radius: 8px;
+      border-left: 3px solid #1fa8a6;
+    }
+
+    .modal-section {
+      margin-bottom: 20px;
+    }
+
+    .modal-label {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      color: #7a8fa3;
+      margin-bottom: 10px;
+      display: block;
+    }
+
+    .modal-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .modal-btn {
+      padding: 8px 14px;
+      border: 1px solid #d4dce6;
+      border-radius: 8px;
+      background: white;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 500;
+    }
+
+    .modal-btn:hover {
+      border-color: #1fa8a6;
+      background: #f0fffe;
+    }
+
+    .modal-btn.selected {
+      background: #1fa8a6;
+      color: white;
+      border-color: #1fa8a6;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .modal-close, .modal-save {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #d4dce6;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .modal-close {
+      background: white;
+      color: #2c3e50;
+    }
+
+    .modal-close:hover {
+      border-color: #7a8fa3;
+    }
+
+    .modal-save {
+      background: #1fa8a6;
+      color: white;
+      border-color: #1fa8a6;
+    }
+
+    .modal-save:hover {
+      background: #0d7a93;
+      border-color: #0d7a93;
+    }
+
+    @media (max-width: 768px) {
+      .categories-grid, .kanban-container {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Tablero de Tareas</h1>
+    <p class="subtitle">Gestión eficiente de tareas y delegaciones</p>
+
+    <div class="controls">
+      <button id="export-btn">Exportar CSV</button>
+    </div>
+  </header>
+
+  <div class="main-container">
+    <!-- Formulario nueva tarea -->
+    <div class="new-task-form">
+      <div class="form-title">Nueva tarea</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Descripción</label>
+          <input type="text" id="task-title-input" placeholder="Escribe la tarea...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Categoría</label>
+          <select id="task-category-input">
+            <option value="">Seleccionar...</option>
+          </select>
+        </div>
+        <button id="add-task-btn">Agregar</button>
+      </div>
+    </div>
+  </div>
+
+  <header style="margin-top: -16px;">
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="categorias">Mis tareas</button>
+      <button class="tab-btn" data-tab="estados">Por estado</button>
+    </div>
+  </header>
+
+  <div class="main-container" style="margin-top: 0;">
+    <!-- TAB 1: POR CATEGORÍA -->
+    <div class="tab-content active" id="tab-categorias">
+      <div class="categories-grid" id="categorias-grid">
+        <!-- Generado por JavaScript -->
+      </div>
+    </div>
+
+    <!-- TAB 2: POR ESTADO -->
+    <div class="tab-content" id="tab-estados">
+      <div class="kanban-container" id="kanban-container">
+        <!-- Generado por JavaScript -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal para editar tarea -->
+  <div class="modal" id="task-modal">
+    <div class="modal-content">
+      <div class="modal-title">Editar tarea</div>
+      <div class="modal-task-name" id="modal-task-name"></div>
+
+      <div class="modal-section">
+        <label class="modal-label">Estado</label>
+        <div class="modal-buttons" id="state-buttons">
+          <!-- Generado por JavaScript -->
+        </div>
+      </div>
+
+      <div class="modal-section">
+        <label class="modal-label">Delegar a</label>
+        <div class="modal-buttons" id="delegate-buttons">
+          <!-- Generado por JavaScript -->
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="modal-close" id="modal-close">Cancelar</button>
+        <button class="modal-save" id="modal-save">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de configuración Telegram -->
+  <div class="modal settings-modal" id="settings-modal">
+    <div class="modal-content" style="max-width: 500px;">
+      <div class="modal-title">Conectar Bot de Telegram</div>
+
+      <div class="modal-section">
+        <label class="modal-label">URL de tu Bot en Vercel</label>
+        <input type="text" id="telegram-bot-url" placeholder="https://tu-bot.vercel.app" style="width: 100%; padding: 10px 12px; border: 1px solid #d4dce6; border-radius: 10px; font-size: 13px;">
+        <p style="font-size: 11px; color: #b8a8c9; margin-top: 8px;">Ej: https://snoopy-telegram-bot.vercel.app</p>
+      </div>
+
+      <div class="modal-section">
+        <label class="modal-label">Estado</label>
+        <div id="telegram-status" style="padding: 10px 12px; background: #f5f7f9; border-radius: 10px; font-size: 12px; color: #7a8fa3;">
+          Desconectado
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="modal-close" id="settings-close">Cerrar</button>
+        <button class="modal-save" id="settings-save" style="background: #1fa8a6; color: white; border: none;">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Badge de configuración -->
+  <div class="settings-badge" id="settings-badge" title="Configurar Telegram">⚙️</div>
+
+  <script>
+    const tasks = [
+      { id: 1, category: 'Raw', title: 'Equivalencias de variedades - Llamada con Oto', state: 'todo', delegated: null, date: '2026-07-02' },
+      { id: 2, category: 'Sofi', title: 'Conteo de devolución de Mono', state: 'todo', delegated: 'Sofi', date: '2026-07-02' },
+      { id: 3, category: 'Actualización', title: 'Master Sales', state: 'todo', delegated: null, date: '2026-07-02' },
+      { id: 4, category: 'Seguimiento', title: 'Exportación Chile con Oto', state: 'todo', delegated: null, date: '2026-07-02' },
+      { id: 5, category: 'Raw', title: 'Seguimiento Vials', state: 'todo', delegated: null, date: '2026-07-02' },
+      { id: 6, category: 'Actualización', title: 'Órdenes y equivalencias con las muestras: Barney\'s Farm, Sean…', state: 'todo', delegated: null, date: '2026-07-02' },
+      { id: 7, category: 'Raw', title: 'Seguimiento Packaging', state: 'todo', delegated: null, date: '2026-07-02' },
+      { id: 8, category: 'Raw', title: 'Stickers y hoodies', state: 'todo', delegated: 'Pau', date: '2026-07-02' },
+      { id: 9, category: 'Sofi', title: 'Conteo de devoluciones de Toni', state: 'todo', delegated: 'Sofi', date: '2026-07-02' },
+      { id: 10, category: 'Sofi', title: 'Conteo de devoluciones de Jens', state: 'todo', delegated: 'Sofi', date: '2026-07-02' },
+      { id: 11, category: 'Sofi', title: 'Coordinación de devolución de Jens', state: 'todo', delegated: 'Sofi', date: '2026-07-02' },
+      { id: 12, category: 'Oscar', title: 'Pruebas de germinación en Miami', state: 'todo', delegated: null, date: '2026-07-02' },
+      { id: 13, category: 'Pao', title: 'Respuesta para David', state: 'todo', delegated: null, date: '2026-07-02' },
+      { id: 14, category: 'IA', title: 'Terminar configuración de Ms. Bubbles sin automatización', state: 'todo', delegated: null, date: '2026-07-02' },
+      { id: 15, category: 'IA', title: 'Carpetas de Marketing en Nelly organizadas', state: 'todo', delegated: null, date: '2026-07-02' },
+      { id: 16, category: 'IA', title: 'Tablero de Manu, mejoras del departamento', state: 'todo', delegated: null, date: '2026-07-02' },
+      { id: 17, category: 'IA', title: 'Automatización procesos de marketing de alphatype: Grow Diaries Card y Weekly Breeders Highlight', state: 'todo', delegated: null, date: '2026-07-02' },
+      { id: 18, category: 'Raw/IA', title: 'Brand Book de Raw', state: 'todo', delegated: null, date: '2026-07-02' },
+      { id: 19, category: 'IA', title: 'Brand Book de alphatype', state: 'todo', delegated: null, date: '2026-07-02' },
+      { id: 20, category: 'Marketing Alphatype', title: 'A15 campaña completa', state: 'todo', delegated: null, date: '2026-07-02' },
+      { id: 21, category: 'IA', title: 'Skill de la generación de las fotos de las plantas', state: 'todo', delegated: null, date: '2026-07-02' },
+      { id: 22, category: 'Actualización', title: 'Stock de Miami', state: 'todo', delegated: null, date: '2026-07-02' },
+      { id: 23, category: 'Actualización', title: 'Updated global stock - clientes', state: 'todo', delegated: null, date: '2026-07-02' },
+      { id: 24, category: 'Aparcado', title: 'Página web Alphatype y plataforma de clientes', state: 'parked', delegated: null, date: '2026-07-02' },
+      { id: 25, category: 'Pao', title: 'Revisar las condiciones de precio con Jens', state: 'todo', delegated: null, date: '2026-07-02' }
+    ];
+
+    const stateLabels = {
+      'todo': 'Por hacer',
+      'progress': 'En progreso',
+      'done': 'Hecho',
+      'parked': 'Aparcado'
+    };
+
+    const delegateOptions = ['Pau', 'Sofi', 'Oscar'];
+    let currentEditingTask = null;
+
+    function init() {
+      loadFromLocalStorage();
+      setupTabs();
+      setupModalEvents();
+      setupExport();
+      setupNewTaskForm();
+      setupSettings();
+      render();
+    }
+
+    function setupTabs() {
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+          document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+          e.target.classList.add('active');
+          document.getElementById(`tab-${e.target.dataset.tab}`).classList.add('active');
+        });
+      });
+    }
+
+    function setupModalEvents() {
+      document.getElementById('modal-close').addEventListener('click', closeModal);
+      document.getElementById('modal-save').addEventListener('click', saveTask);
+      document.querySelector('.modal').addEventListener('click', (e) => {
+        if (e.target.id === 'task-modal') closeModal();
+      });
+    }
+
+    function setupExport() {
+      document.getElementById('export-btn').addEventListener('click', exportTasks);
+    }
+
+    function setupNewTaskForm() {
+      const categories = [...new Set(tasks.map(t => t.category))].sort();
+      const select = document.getElementById('task-category-input');
+      categories.forEach(cat => {
+        const opt = document.createElement('option');
+        opt.value = cat;
+        opt.textContent = cat;
+        select.appendChild(opt);
+      });
+
+      document.getElementById('add-task-btn').addEventListener('click', addNewTask);
+      document.getElementById('task-title-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') addNewTask();
+      });
+    }
+
+    function setupSettings() {
+      const savedUrl = localStorage.getItem('telegram-bot-url');
+      if (savedUrl) {
+        document.getElementById('telegram-bot-url').value = savedUrl;
+        checkTelegramStatus(savedUrl);
+      }
+
+      document.getElementById('settings-badge').addEventListener('click', () => {
+        document.getElementById('settings-modal').classList.add('active');
+      });
+
+      document.getElementById('settings-close').addEventListener('click', () => {
+        document.getElementById('settings-modal').classList.remove('active');
+      });
+
+      document.getElementById('settings-save').addEventListener('click', () => {
+        const url = document.getElementById('telegram-bot-url').value.trim();
+        if (!url) {
+          alert('Ingresa la URL del bot');
+          return;
+        }
+        localStorage.setItem('telegram-bot-url', url);
+        checkTelegramStatus(url);
+        alert('✅ URL guardada. El dashboard sincronizará automáticamente.');
+      });
+
+      document.getElementById('settings-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'settings-modal') {
+          document.getElementById('settings-modal').classList.remove('active');
+        }
+      });
+    }
+
+    async function checkTelegramStatus(url) {
+      try {
+        const response = await fetch(`${url}/health`);
+        if (response.ok) {
+          document.getElementById('telegram-status').innerHTML = '✅ Conectado';
+          document.getElementById('telegram-status').style.color = '#1fa8a6';
+        }
+      } catch (error) {
+        document.getElementById('telegram-status').innerHTML = '⚠️ Sin conexión';
+        document.getElementById('telegram-status').style.color = '#ff9a44';
+      }
+    }
+
+    function addNewTask() {
+      const titleInput = document.getElementById('task-title-input');
+      const categoryInput = document.getElementById('task-category-input');
+      const title = titleInput.value.trim();
+      const category = categoryInput.value;
+
+      if (!title || !category) {
+        alert('Completa descripción y categoría');
+        return;
+      }
+
+      const newId = Math.max(...tasks.map(t => t.id), 0) + 1;
+      tasks.push({
+        id: newId,
+        category: category,
+        title: title,
+        state: 'todo',
+        delegated: null,
+        date: new Date().toISOString().split('T')[0]
+      });
+
+      saveToLocalStorage();
+      render();
+      titleInput.value = '';
+      categoryInput.value = '';
+      titleInput.focus();
+    }
+
+    function groupByCategory(taskList) {
+      return taskList.reduce((acc, task) => {
+        if (!acc[task.category]) {
+          acc[task.category] = [];
+        }
+        acc[task.category].push(task);
+        return acc;
+      }, {});
+    }
+
+    function groupByState(taskList) {
+      return taskList.reduce((acc, task) => {
+        if (!acc[task.state]) {
+          acc[task.state] = [];
+        }
+        acc[task.state].push(task);
+        return acc;
+      }, {});
+    }
+
+    function render() {
+      renderCategorias();
+      renderEstados();
+    }
+
+    function renderCategorias() {
+      const grid = document.getElementById('categorias-grid');
+      grid.innerHTML = '';
+
+      if (tasks.length === 0) {
+        grid.innerHTML = '<div class="empty-state">No hay tareas</div>';
+        return;
+      }
+
+      const byCategory = groupByCategory(tasks);
+
+      Object.keys(byCategory).sort().forEach(category => {
+        const categoryTasks = byCategory[category];
+
+        const card = document.createElement('div');
+        card.className = 'category-card';
+
+        const header = document.createElement('div');
+        header.className = 'category-header';
+        header.innerHTML = `
+          <div class="category-indicator" style="background: var(--cat-color, #1fa8a6)"></div>
+          <div class="category-name">${category}</div>
+          <div class="category-count">${categoryTasks.length}</div>
+        `;
+        card.appendChild(header);
+
+        categoryTasks.forEach(task => {
+          const item = document.createElement('div');
+          item.className = `task-item state-${task.state}`;
+          item.innerHTML = `
+            <div class="task-title">${task.title}</div>
+            <div class="task-meta">
+              <span class="task-state">${stateLabels[task.state]}</span>
+              ${task.delegated ? `<span class="task-delegated">→ ${task.delegated}</span>` : ''}
+              <span class="task-date">${task.date}</span>
+            </div>
+          `;
+          item.addEventListener('click', () => openModal(task));
+          card.appendChild(item);
+        });
+
+        grid.appendChild(card);
+      });
+    }
+
+    function renderEstados() {
+      const container = document.getElementById('kanban-container');
+      container.innerHTML = '';
+
+      const byState = groupByState(tasks);
+
+      ['todo', 'progress', 'done', 'parked'].forEach(state => {
+        const stateTasks = byState[state] || [];
+
+        const column = document.createElement('div');
+        column.className = 'kanban-column';
+
+        const header = document.createElement('div');
+        header.className = `kanban-header state-${state}`;
+        header.innerHTML = `
+          <div class="kanban-indicator"></div>
+          <span>${stateLabels[state]}</span>
+          <div class="kanban-count">${stateTasks.length}</div>
+        `;
+        column.appendChild(header);
+
+        const cards = document.createElement('div');
+        cards.className = 'kanban-cards';
+
+        if (stateTasks.length === 0) {
+          cards.innerHTML = '<div class="empty-state">—</div>';
+        } else {
+          stateTasks.forEach(task => {
+            const card = document.createElement('div');
+            card.className = `kanban-card state-${state}`;
+            card.innerHTML = `
+              <div class="kanban-card-title">${task.title}</div>
+              <div class="kanban-card-meta">
+                <div>${task.category}</div>
+                ${task.delegated ? `<div style="color: #1fa8a6;">→ ${task.delegated}</div>` : ''}
+              </div>
+            `;
+            card.addEventListener('click', () => openModal(task));
+            cards.appendChild(card);
+          });
+        }
+
+        column.appendChild(cards);
+        container.appendChild(column);
+      });
+    }
+
+    function openModal(task) {
+      currentEditingTask = task;
+      document.getElementById('modal-task-name').textContent = task.title;
+
+      // State buttons
+      const stateButtons = document.getElementById('state-buttons');
+      stateButtons.innerHTML = '';
+      ['todo', 'progress', 'done', 'parked'].forEach(state => {
+        const btn = document.createElement('button');
+        btn.className = `modal-btn ${task.state === state ? 'selected' : ''}`;
+        btn.textContent = stateLabels[state];
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#state-buttons .modal-btn').forEach(b => b.classList.remove('selected'));
+          btn.classList.add('selected');
+          task.state = state;
+        });
+        stateButtons.appendChild(btn);
+      });
+
+      // Delegate buttons
+      const delegateButtons = document.getElementById('delegate-buttons');
+      delegateButtons.innerHTML = '';
+
+      const noneBtn = document.createElement('button');
+      noneBtn.className = `modal-btn ${task.delegated === null ? 'selected' : ''}`;
+      noneBtn.textContent = 'No delegar';
+      noneBtn.addEventListener('click', () => {
+        document.querySelectorAll('#delegate-buttons .modal-btn').forEach(b => b.classList.remove('selected'));
+        noneBtn.classList.add('selected');
+        task.delegated = null;
+      });
+      delegateButtons.appendChild(noneBtn);
+
+      delegateOptions.forEach(person => {
+        const btn = document.createElement('button');
+        btn.className = `modal-btn ${task.delegated === person ? 'selected' : ''}`;
+        btn.textContent = person;
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#delegate-buttons .modal-btn').forEach(b => b.classList.remove('selected'));
+          btn.classList.add('selected');
+          task.delegated = person;
+        });
+        delegateButtons.appendChild(btn);
+      });
+
+      document.getElementById('task-modal').classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('task-modal').classList.remove('active');
+      currentEditingTask = null;
+    }
+
+    function saveTask() {
+      if (currentEditingTask) {
+        saveToLocalStorage();
+        render();
+        closeModal();
+      }
+    }
+
+    function saveToLocalStorage() {
+      localStorage.setItem('snoopy-tasks-v3', JSON.stringify(tasks));
+    }
+
+    function loadFromLocalStorage() {
+      const saved = localStorage.getItem('snoopy-tasks-v3');
+      if (saved) {
+        const loaded = JSON.parse(saved);
+        tasks.length = 0;
+        tasks.push(...loaded);
+      }
+    }
+
+    function exportTasks() {
+      const csv = [
+        ['Categoría', 'Descripción', 'Estado', 'Delegado a', 'Fecha'].join(','),
+        ...tasks.map(t => [
+          `"${t.category}"`,
+          `"${t.title}"`,
+          `"${stateLabels[t.state]}"`,
+          `"${t.delegated || '—'}"`,
+          `"${t.date}"`
+        ].join(','))
+      ].join('\n');
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `tareas-export-${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+    }
+
+    init();
+  </script>
+</body>
+</html>

@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ms. Bubbles — Flow prototype</title>
+<style>
+  :root{
+    --bg:#0e1621; --panel:#17212b; --bubble:#182533; --accent:#2b5278;
+    --btn:#202b36; --btn-h:#2b3b4a; --text:#e9edf0; --muted:#7d8e9e;
+    --gold:#d4a017; --green:#3d8f6b;
+  }
+  *{box-sizing:border-box;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+  body{margin:0;background:#0a0f15;color:var(--text);display:flex;gap:18px;padding:18px;min-height:100vh}
+  h1{font-size:15px;margin:0 0 2px}
+  .sub{color:var(--muted);font-size:12px;margin-bottom:10px}
+
+  /* phone */
+  .phone{width:380px;flex:0 0 380px;background:var(--bg);border-radius:18px;overflow:hidden;
+    box-shadow:0 8px 40px rgba(0,0,0,.5);display:flex;flex-direction:column;height:760px}
+  .topbar{background:var(--panel);padding:12px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #0a141d}
+  .avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#3a6ea5,#1f3b57);
+    display:flex;align-items:center;justify-content:center;font-size:18px}
+  .tname{font-weight:600;font-size:14px}
+  .tstat{color:var(--muted);font-size:11px}
+  .chat{flex:1;overflow-y:auto;padding:16px;background:
+    radial-gradient(circle at 20% 10%, #14202c 0, transparent 40%),
+    radial-gradient(circle at 80% 80%, #131d27 0, transparent 40%), var(--bg)}
+  .msg{max-width:88%;margin-bottom:8px;padding:9px 12px;border-radius:14px;font-size:13.5px;
+    line-height:1.45;white-space:pre-wrap;word-wrap:break-word}
+  .bot{background:var(--bubble);border-bottom-left-radius:4px}
+  .me{background:var(--accent);margin-left:auto;border-bottom-right-radius:4px;font-size:12.5px}
+  .tap{background:transparent;color:var(--muted);font-size:11px;margin:2px 0 8px auto;
+    max-width:88%;text-align:right}
+  .kb{margin:4px 0 12px;display:flex;flex-direction:column;gap:5px;max-width:100%}
+  .kbrow{display:flex;gap:5px}
+  .kbbtn{flex:1;background:var(--btn);border:none;color:var(--text);padding:10px 8px;border-radius:8px;
+    font-size:12.5px;cursor:pointer;transition:.12s;text-align:center}
+  .kbbtn:hover{background:var(--btn-h)}
+  .kbbtn.cancel{color:#e78}
+  .kbbtn.pub{background:#234b39}
+  .kbbtn.pub:hover{background:#2c6049}
+
+  /* sidebar */
+  .side{flex:1;min-width:280px;max-width:520px}
+  .card{background:var(--panel);border-radius:12px;padding:14px 16px;margin-bottom:14px}
+  .toolbar button{background:var(--btn);border:1px solid #2a3a48;color:var(--text);
+    padding:8px 11px;border-radius:8px;font-size:12px;cursor:pointer;margin:0 6px 6px 0}
+  .toolbar button:hover{background:var(--btn-h)}
+  .toolbar .danger{border-color:#5a2b2b}
+  .trace{font-size:12px;max-height:520px;overflow-y:auto}
+  .trace .step{padding:6px 0;border-bottom:1px solid #1f2c38;display:flex;gap:8px}
+  .trace .n{color:var(--muted);flex:0 0 22px}
+  .trace .scr{color:var(--gold);font-weight:600}
+  .trace .act{color:var(--muted)}
+  .legend{color:var(--muted);font-size:11.5px;line-height:1.6}
+  code{background:#0c141d;padding:1px 5px;border-radius:4px;font-size:11px}
+  .pill{display:inline-block;background:#0c141d;border:1px solid #243140;border-radius:20px;
+    padding:2px 9px;font-size:11px;color:var(--muted);margin-right:6px}
+</style>
+</head>
+<body>
+  <div class="phone">
+    <div class="topbar">
+      <div class="avatar">🫧</div>
+      <div><div class="tname">Ms. Bubbles</div><div class="tstat" id="status">bot · internal</div></div>
+    </div>
+    <div class="chat" id="chat"></div>
+  </div>
+
+  <div class="side">
+    <div class="card">
+      <h1>Ms. Bubbles — flow prototype</h1>
+      <div class="sub">Maqueta interactiva de <code>BOT-MENU.md</code>. Aprieta los botones del teléfono y verifica la ruta. <b>No</b> es el bot real — es el spec hecho clickeable.</div>
+      <div class="toolbar">
+        <span class="pill">Simular envío sin menú:</span>
+        <button onclick="go('photo_sent_prompt','📷 sent a photo')">📷 Mandar foto</button>
+        <button onclick="go('video_watermark','🎬 sent a video (auto-routes)')">🎬 Mandar video</button>
+        <button class="danger" onclick="reset()">↺ Reiniciar</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sub" style="margin:0 0 8px">Ruta recorrida (route trace)</div>
+      <div class="trace" id="trace"></div>
+    </div>
+
+    <div class="card">
+      <div class="legend">
+        <b>Qué verificar:</b><br>
+        • <span class="scr" style="color:var(--gold)">/start</span> muestra saludo + 6 botones (sin subtítulos de familia) + Cancel.<br>
+        • Cada pantalla bajo /start trae <code>⬅️ Back</code> + <code>❌ Cancel</code>; los reviews añaden <code>🔄 Redo</code>.<br>
+        • Foto sin menú → pregunta <code>Photo Update</code> vs <code>Alphatype Bulletin</code>. Video → auto Video Update.<br>
+        • Modo <code>🪄 I'll send context</code> acepta nota de voz (Telegram transcribe).<br>
+        • Grow Diaries: <b>un tap</b> → el bot auto-arma TODO (foto del pool + strain + 1 quote + rating, <b>sin grower</b>) → publish (mueve a Used/). Pool vacío → avisa, no repite.<br>
+        • Weekly Brief: <b>un tap</b> genera el pool (sin Generate/Re-post); por ítem Discard/Social + footer Approve & send. <b>Sin canal web</b>.<br>
+        • Highlight (tarjeta social): determinística → solo <code>✅ Publish</code> / <code>⬅️ Back</code> / <code>❌ Cancel</code>. <b>Sin Redo</b>; Back = escoger otra noticia.
+      </div>
+    </div>
+  </div>
+
+<script>
+/* ---- node graph (mirrors BOT-MENU.md) ---- */
+const N = {
+  start:{t:`🫧 Ms. Bubbles\nHoli Team, What are we making today?`,
+    b:[[['✍️ Weekly Breeder’s Brief','brief_list']],
+       [['⭐ Breeder’s Brief Highlight','hl_pick']],
+       [['📰 Alphatype Bulletin','bul_start']],
+       [['🌱 Grow Diaries Card','gd_card']],
+       [['🖼️ Photo Update','photo_ask']],
+       [['🎬 Video Update','video_ask']],
+       [['❌ Cancel','CANCEL','cancel']]]},
+
+  /* ---- Weekly Breeder's Brief ---- */
+  brief_list:{t:`📋 Brief #latest · {date} · 6 items — generated on one tap (no Generate/Re-post step).\nUnder each: discard it, or turn it into a social card.\n\n1. New trait-stacked line shows X, what it means for breeders.\n   source.com · {date}`,
+    b:[[['🗑 Discard','brief_list'],['🖼 Social','brief_social']],
+       [['✅ Approve & send to mailing list','brief_sent','pub']],
+       [['⬅️ Back','start'],['❌ Cancel','CANCEL','cancel']]]},
+  brief_social:{t:'🖼 Breeder’s Brief Highlight — 1:1 social card rendered → Telegram group. Item + card params are fixed; nothing to review.',
+    b:[[['✅ Publish to Alphatype group','pub_group','pub']],
+       [['⬅️ Back (pick another item)','brief_list'],['❌ Cancel','CANCEL','cancel']]]},
+  brief_sent:{t:'✅ Sent to the mailing list. Newsletter edition shipped.',
+    b:[[['⬅️ Back','start']]]},
+
+  /* ---- Breeder's Brief Highlight ---- */
+  hl_pick:{t:'⭐ Breeder’s Brief Highlight\nPick an item from the latest Brief:',
+    b:[[['1. Trait-stacked line…','hl_social']],[['2. New germplasm release…','hl_social']],
+       [['⬅️ Back','start'],['❌ Cancel','CANCEL','cancel']]]},
+  hl_social:{t:'🖼 Breeder’s Brief Highlight — 1:1 social card rendered → Telegram group. Item + card params are fixed; nothing to review.',
+    b:[[['✅ Publish to Alphatype group','pub_group','pub']],
+       [['⬅️ Back (pick another item)','hl_pick'],['❌ Cancel','CANCEL','cancel']]]},
+
+  /* ---- Alphatype Bulletin ---- */
+  bul_start:{t:'📰 Alphatype Bulletin — long-form article on our own work (lab / harvest / field / new varieties). Generated in Telegram; no web destination.',
+    b:[[['📷 Send hero photo','bul_hero'],['✍️ Start writing','bul_review']],
+       [['⬅️ Back','start'],['❌ Cancel','CANCEL','cancel']]]},
+  bul_hero:{t:'Hero image received. Draft the article body (text or voice note — Telegram transcribes it).',
+    b:[[['✍️ Draft body','bul_review']],
+       [['⬅️ Back','bul_start'],['❌ Cancel','CANCEL','cancel']]]},
+  bul_review:{t:'📰 Article draft ready.',
+    b:[[['✅ Deliver draft in Telegram','bul_done','pub']],
+       [['🔄 Redo','bul_review'],['⬅️ Back','bul_start'],['❌ Cancel','CANCEL','cancel']]]},
+  bul_done:{t:'✅ Article draft delivered in Telegram for the team. (No web destination wired yet.)',
+    b:[[['⬅️ Back','start']]]},
+
+  /* ---- Grow Diaries Card ---- */
+  gd_card:{t:'🌱 One tap → card auto-built (1080×1080). No menu, no choices — the bot picked everything:\n• Photo: auto-pulled from the pool (unused)\n• Fixed badge "Featured on Grow Diaries"\n• Strain: from file name (bubble-gas → "Bubble Gas") or invented to fit\n• ONE coherent quote, placed alone (real-grower English, ≤160 chars, no em dash). Bot varies the voice internally (chill/technical/hype/seasoned/terse) — no picker shown\n• Rating: auto\n• NO grower / no attribution',
+    b:[[['✅ Publish to Alphatype group','gd_pub','pub']],
+       [['🔄 Redo (re-roll)','gd_card'],['🚫 (simulate empty pool)','gd_empty']],
+       [['⬅️ Back','start'],['❌ Cancel','CANCEL','cancel']]]},
+  gd_empty:{t:'🚫 Pool’s empty — upload more photos. (Never reuses.)',
+    b:[[['⬅️ Back','start']]]},
+  gd_pub:{t:'✅ Published to the Alphatype group. Photo moved to Used/ (no reuse).',
+    b:[[['⬅️ Back','start']]]},
+
+  /* ---- Photo Update ---- */
+  photo_ask:{t:'🖼️ Photo Update — send me the photo.',
+    b:[[['📷 Send photo','photo_wm']],[['⬅️ Back','start'],['❌ Cancel','CANCEL','cancel']]]},
+  photo_sent_prompt:{t:'Nice shot. What do we make?',
+    b:[[['🖼️ Photo Update','photo_wm'],['📰 Alphatype Bulletin','bul_hero']],
+       [['❌ Cancel','CANCEL','cancel']]]},
+  photo_wm:{t:'Watermarked (1080×1080 PNG). Caption?',
+    b:[[['✍️ I’ll write it','photo_write'],['🪄 I’ll send context','photo_ctx']],
+       [['⬅️ Back','photo_ask'],['❌ Cancel','CANCEL','cancel']]]},
+  photo_write:{t:'Send your final caption (published verbatim). Write in English.',
+    b:[[['💬 Send caption','photo_rev_w']],[['⬅️ Back','photo_wm'],['❌ Cancel','CANCEL','cancel']]]},
+  photo_ctx:{t:'Send context — text OR a voice note / audio. Telegram transcribes it; usually Spanish, messy, fine.',
+    b:[[['🎤 Send voice note','photo_draft'],['💬 Send text','photo_draft']],
+       [['⬅️ Back','photo_wm'],['❌ Cancel','CANCEL','cancel']]]},
+  photo_draft:{t:'Draft caption (our voice, English):\n"Dialed-in run, dense structure, terps loud out the jar."',
+    b:[[['✅ Use it','photo_rev'],['🔄 Another version','photo_draft'],['✏️ Edit','photo_rev']],
+       [['⬅️ Back','photo_ctx'],['❌ Cancel','CANCEL','cancel']]]},
+  photo_rev:{t:'Review: watermarked photo + caption together.',
+    b:[[['✅ Publish to Alphatype group','pub_group','pub']],
+       [['✏️ Edit caption','photo_draft'],['🔄 Redo','photo_wm']],
+       [['⬅️ Back','photo_draft'],['❌ Cancel','CANCEL','cancel']]]},
+  photo_rev_w:{t:'Review: watermarked photo + your caption.',
+    b:[[['✅ Publish to Alphatype group','pub_group','pub']],
+       [['🪄 Polish to our voice','photo_rev_w'],['✏️ Edit caption','photo_write']],
+       [['🔄 Redo','photo_wm'],['⬅️ Back','photo_write'],['❌ Cancel','CANCEL','cancel']]]},
+
+  /* ---- Video Update ---- */
+  video_ask:{t:'🎬 Video Update — send me the clip.',
+    b:[[['🎬 Send clip','video_wm']],[['⬅️ Back','start'],['❌ Cancel','CANCEL','cancel']]]},
+  video_wm:{t:'Watermarked + center-cropped 4:5 (MP4). Caption?',
+    b:[[['✍️ I’ll write it','video_write'],['🪄 I’ll send context','video_ctx']],
+       [['⬅️ Back','video_ask'],['❌ Cancel','CANCEL','cancel']]]},
+  video_write:{t:'Send your final caption (verbatim). English.',
+    b:[[['💬 Send caption','video_rev_w']],[['⬅️ Back','video_wm'],['❌ Cancel','CANCEL','cancel']]]},
+  video_ctx:{t:'Send context — text OR a voice note. Telegram transcribes it.',
+    b:[[['🎤 Send voice note','video_draft'],['💬 Send text','video_draft']],
+       [['⬅️ Back','video_wm'],['❌ Cancel','CANCEL','cancel']]]},
+  video_draft:{t:'Draft caption (our voice, English):\n"Quick look at this week’s run."',
+    b:[[['✅ Use it','video_rev'],['🔄 Another version','video_draft'],['✏️ Edit','video_rev']],
+       [['⬅️ Back','video_ctx'],['❌ Cancel','CANCEL','cancel']]]},
+  video_rev:{t:'Review: cropped clip + caption.',
+    b:[[['✅ Publish to Alphatype group','pub_group','pub']],
+       [['✏️ Edit caption','video_draft'],['🔄 Redo','video_wm']],
+       [['⬅️ Back','video_draft'],['❌ Cancel','CANCEL','cancel']]]},
+  video_rev_w:{t:'Review: cropped clip + your caption.',
+    b:[[['✅ Publish to Alphatype group','pub_group','pub']],
+       [['🪄 Polish to our voice','video_rev_w'],['✏️ Edit caption','video_write']],
+       [['🔄 Redo','video_wm'],['⬅️ Back','video_write'],['❌ Cancel','CANCEL','cancel']]]},
+
+  /* ---- shared endings ---- */
+  pub_group:{t:'✅ Published to the Alphatype Telegram group.',b:[[['⬅️ Back','start']]]},
+  CANCEL:{t:'Flow cancelled. Send /start to begin.',b:[[['/start','start']]]}
+};
+
+let step=0;
+const chat=document.getElementById('chat'), trace=document.getElementById('trace');
+
+function render(id){
+  const n=N[id]; if(!n)return;
+  chat.innerHTML='';
+  const m=document.createElement('div'); m.className='msg bot'; m.textContent=n.t; chat.appendChild(m);
+  const kb=document.createElement('div'); kb.className='kb';
+  n.b.forEach(row=>{
+    const r=document.createElement('div'); r.className='kbrow';
+    row.forEach(btn=>{
+      const [label,to,cls]=btn;
+      const el=document.createElement('button');
+      el.className='kbbtn'+(cls?(' '+cls):'');
+      el.textContent=label;
+      el.onclick=()=>go(to,label);
+      r.appendChild(el);
+    });
+    kb.appendChild(r);
+  });
+  chat.appendChild(kb);
+}
+
+function logStep(scr,act){
+  step++;
+  const d=document.createElement('div'); d.className='step';
+  d.innerHTML=`<span class="n">${step}</span><span><span class="scr">${scr}</span> <span class="act">${act?('· '+act):''}</span></span>`;
+  trace.appendChild(d); trace.scrollTop=trace.scrollHeight;
+}
+
+function go(to,label){
+  logStep(to, label?('tapped: '+label):'');
+  document.getElementById('status').textContent = to==='CANCEL'?'cancelled':'bot · internal';
+  render(to);
+}
+
+function reset(){ step=0; trace.innerHTML=''; logStep('start','/start'); render('start'); }
+reset();
+</script>
+</body>
+</html>

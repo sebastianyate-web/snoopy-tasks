@@ -1,0 +1,281 @@
+================================================================================
+GROW DIARIES CARD — COMPLETE SPECIFICATION
+Alphatype Marketing SSOT
+Extracted from Nelly's Den | 2026-06-25
+================================================================================
+
+OVERVIEW
+--------
+The Grow Diaries Card is a 1080×1080 px square social deliverable featuring a
+customer cannabis plant photo from Grow Diaries (growdiaries.com) with an
+editorial quote format. It's part of Alphatype's 6-product marketing roster
+and is live in the Miss Bubbles bot.
+
+Product ID: 4 (in mkt_products table)
+Status: Live in bot
+Audience: Social followers / growers (B2B)
+Channel: Bot channel (Miss Bubbles)
+
+
+DESIGN SPECIFICATION
+--------------------
+
+Canvas:
+  - Size: 1080 × 1080 px (1:1 aspect ratio)
+  - Background: #1b1d1c (dark charcoal)
+  - Rendering: HTML+CSS via Chrome headless screenshot
+
+Layout Structure:
+  - Flex column with space-between
+  - Badge pinned top-left
+  - Text block (quote + strain + meta) pinned bottom-left
+  - Logo absolute top-right
+
+Design Tokens:
+  Colors:
+    - Carbon: #303231
+    - Green: #455b55
+    - Sage: #a2ada9
+    - Gold: #d4a017 (badge, stars)
+    - White: #ffffff
+    - Quote text: #ffffff
+    - Meta text: #e7ddc4 (muted cream)
+
+  Typography:
+    - Family: Futura (100% match to alphatype.co)
+    - Fallback: Jost, system-ui, sans-serif
+    - Font files: All weights/styles via .woff2 (Light, Book, Medium, Bold)
+    - No serif fonts
+
+  Padding: 60px top/bottom, 64px left/right
+
+
+DATA SCHEMA (Required Input Fields)
+-----------------------------------
+
+photo (string, required)
+  - URI or local path to plant photo
+  - Full-bleed with object-fit: cover, centered
+  - Portrait images on neutral/gray background work best
+
+quote (string, required)
+  - Grower's comment (max 160 characters)
+  - Hero element, rendered in italic
+  - Do NOT include surrounding quotes — template adds curly quotes (" ")
+  - Example: "The frostiest cut I've run all year — terps jump out the jar
+    the second you crack it."
+
+strain (string, required)
+  - Strain/variety name (max 28 characters)
+  - Auto-uppercased by template
+  - Example: "Lemon Cherry Gelato"
+
+grower (string, required)
+  - Grow Diaries handle
+  - Pattern: ^@?[A-Za-z0-9._]+$
+  - Example: "@bayarea.buds"
+
+type (enum, required)
+  - One of: Indica, Sativa, Hybrid, Sativa Hybrid, Indica Hybrid
+  - Rendered uppercase in meta row
+
+rating (number, required)
+  - Star rating from 0 to 5 (increments of 0.5)
+  - Example values: 0, 0.5, 1, 1.5, ..., 4.5, 5
+  - Maps to 5 star icons with full/half/empty fill
+
+
+LAYERS (Visual Hierarchy)
+------------------------
+
+1. BADGE (top-left)
+   - Text: "Featured on Grow Diaries"
+   - Style: Uppercase pill shape
+   - Font: Futura Medium, 20px, letter-spacing 3.25px
+   - Color: Gold (#d4a017)
+   - Border: 2.5px solid gold, radius 999px
+   - Padding: 16px 31px
+   - No fill (outline only)
+
+2. STARS (bottom-left, above quote)
+   - 5 star icons, 34px size, 4px gap
+   - Full star: Gold (#d4a017)
+   - Half star: Linear gradient 50% gold / 50% rgba(255,255,255,0.28)
+   - Empty star: rgba(255,255,255,0.28)
+   - Logic: floor(rating) full stars; if remainder >= 0.5, next star half-filled
+   - Example: rating 4.5 = 4 full + 1 half
+   - SVG path: M12 2l3 6.3 6.9.9-5 4.8 1.2 6.9L12 17.8 5.9 20.9 7.1 14 2.1 9.2 9 8.3z
+
+3. QUOTE (bottom-left, below stars)
+   - Source: {quote} field
+   - Style: Italic
+   - Font: Futura Light (300), 39px, line-height 1.4
+   - Color: White (#ffffff)
+   - Max-width: 92%
+   - Text-shadow: 0 2px 18px rgba(0,0,0,0.4)
+   - Wrapped with curly quotes: " {quote} "
+
+4. STRAIN (bottom-left, below quote)
+   - Source: {strain} field
+   - Style: Uppercase, bold
+   - Font: Futura Bold (700), 72px, letter-spacing 0.5px, line-height 0.98
+   - Color: White (#ffffff)
+
+5. META ROW (bottom-left, below strain)
+   - Divider: 1px solid rgba(255,255,255,0.3) above, padding-top 20px
+   - Layout: space-between (left-aligned vs right-aligned)
+
+   Left side:
+     - Source: {grower} field
+     - Font: Futura Book (400), 19px, letter-spacing 1px
+     - Color: #e7ddc4
+
+   Right side:
+     - Template: "{type} · {rating}/5"
+     - Style: Uppercase
+     - Font: Futura Medium (500), 16px, letter-spacing 2px
+     - Color: Sage (#a2ada9)
+
+6. BACKGROUND & OVERLAY
+   - Photo: Full-bleed via {photo} field
+   - Gradient overlay (to top):
+     * 6%: rgba(20,24,22,0.94) — darkest at bottom
+     * 40%: rgba(20,24,22,0.55)
+     * 70%: rgba(20,24,22,0.12)
+     * 100%: rgba(20,24,22,0.40) — slight top darkening for badge
+
+7. LOGO (top-right)
+   - Asset: alphatype-white.svg
+   - Height: 30px
+   - Position: top-right
+   - Opacity: 0.95
+
+
+RENDERING PIPELINE
+------------------
+
+Engine: Chrome headless + Python script (render.py)
+
+Input:
+  1. Template file: template.html (self-contained, fonts + logo embedded)
+  2. Data object with 6 fields: {photo, quote, strain, grower, type, rating}
+
+Process:
+  1. Replace {{PHOTO}}, {{QUOTE}}, {{STRAIN}}, {{GROWER}}, {{TYPE}},
+     {{RATING}} tokens in HTML
+  2. Calculate star fill classes (s-full / s-half / s-empty) per rating
+  3. Set each star <path> class accordingly
+  4. Save filled HTML to temp file
+  5. Invoke Chrome headless:
+     chrome --headless=new --disable-gpu --hide-scrollbars
+            --screenshot=OUT.png --window-size=1080,1080
+            --force-device-scale-factor=2 FILLED.html
+
+Output:
+  - Format: PNG
+  - Dimensions: 1080 × 1080 px
+  - Note: device-scale-factor 2 yields crisp 2160px render, downsampled to 1080
+
+
+FONT FILES REQUIRED
+-------------------
+
+All .woff2 files must resolve relative to the template HTML or be embedded
+as base64. Paths (from design-system):
+
+  - Futura-Light.woff2 (300 weight, normal)
+  - Futura-LightItalic.woff2 (300 weight, italic)
+  - Futura-Book.woff2 (400 weight, normal)
+  - Futura-BookItalic.woff2 (400 weight, italic)
+  - Futura-Medium.woff2 (500 weight, normal)
+  - Futura-Bold.woff2 (700 weight, normal)
+
+Current embedding: Base64-encoded in template.html (via embed_brand_assets.py)
+
+
+MARKETING CONTEXT
+-----------------
+
+Product Family: Content Products (6 total)
+
+Related Products:
+  1. Weekly Breeder's Brief — weekly genetics/breeding news digest
+  2. Genetics Watch (social card) — 1080×1080 card for selected brief item
+  3. Website article — expanded standalone web article draft
+  4. Grow Diaries card ← YOU ARE HERE
+  5. Photo update — photo + logo watermark + caption
+  6. Video update — vertical clip + logo + caption
+
+Integration:
+  - Managed by Miss Bubbles bot (internal content bot)
+  - Deployment: Manual review by Manuel before deploy
+  - Handoff doc protocol required for each bot update
+  - Part of /products folder in marketing workspace
+
+
+FILES IN NELLY'S DEN
+-------------------
+
+Spec Document:
+  alphatype/marketing/featured-card/spec.json
+
+HTML Template:
+  alphatype/marketing/featured-card/template.html (auto-generated)
+  alphatype/marketing/featured-card/template.src.html (source)
+
+Render Script:
+  alphatype/marketing/featured-card/render.py
+
+Font Assets:
+  alphatype/marketing/featured-card/assets/Futura-*.woff2 (×6 files)
+  alphatype/marketing/featured-card/assets/alphatype-white.png
+  alphatype/marketing/featured-card/assets/alphatype-white.svg
+
+Template Note:
+  The HTML template is auto-generated from template.src.html via
+  embed_brand_assets.py, which embeds all fonts + logo as base64 for
+  portability. DO NOT hand-edit template.html; edit template.src.html instead.
+
+
+APPROVAL STATUS
+---------------
+
+Template: Approved (v1.0.0)
+Design: Final
+Status: Live in bot (Miss Bubbles deployment)
+Last Updated: (per Alphatype brand finalization, 2026)
+
+
+EXAMPLE DATA
+-----------
+
+{
+  "photo": "/path/to/grower-plant-photo.jpg",
+  "quote": "Smooth, dense buds with killer terps. This strain hits different.",
+  "strain": "Lemon Cherry Gelato",
+  "grower": "@bayarea.buds",
+  "type": "Hybrid",
+  "rating": 4.5
+}
+
+Rendered output (partial visual description):
+  - Large plant photo with dark bottom gradient
+  - Gold "Featured on Grow Diaries" pill badge top-left
+  - 4 full gold stars + 1 half gold star bottom-left (rating 4.5)
+  - Italicized grower quote in white: "Smooth, dense buds with killer terps.
+    This strain hits different."
+  - Bold white strain name: "LEMON CHERRY GELATO"
+  - Meta row: "@bayarea.buds" | "HYBRID · 4.5/5"
+  - Alphatype white logo top-right (subtle opacity)
+
+
+BRAND ALIGNMENT
+---------------
+
+Voice: Chill, direct, concrete (no em dashes, anti-AI-slop rules)
+Typography: Futura only (matches alphatype.co brand)
+Color Palette: Alphatype signature (carbon, sage, gold, white)
+Tone: Educational, grower-focused, professional B2B
+Audience Assumption: Breeders, seed banks, growers with Grow Diaries presence
+
+================================================================================
