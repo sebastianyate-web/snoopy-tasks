@@ -95,6 +95,8 @@ async function saveTasksToGithub(tasksData, message = 'Update tasks') {
 const server = http.createServer(async (req, res) => {
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') {
     res.writeHead(200);
@@ -245,8 +247,16 @@ const server = http.createServer(async (req, res) => {
         }
 
         const tasksData = await getTasksFromGithub();
-        const taskToDelete = tasksData.tasks.find(t => t.id === taskId || t.id === parseInt(taskId));
-        tasksData.tasks = tasksData.tasks.filter(t => t.id !== taskId && t.id !== parseInt(taskId));
+        const taskToDelete = tasksData.tasks.find(t => {
+          const tId = parseInt(t.id) || t.id;
+          const searchId = parseInt(taskId) || taskId;
+          return tId === searchId || t.id === taskId;
+        });
+        tasksData.tasks = tasksData.tasks.filter(t => {
+          const tId = parseInt(t.id) || t.id;
+          const searchId = parseInt(taskId) || taskId;
+          return tId !== searchId && t.id !== taskId;
+        });
 
         const saved = await saveTasksToGithub(tasksData, `Delete task: ${taskToDelete?.title || taskId}`);
         res.writeHead(200);
@@ -276,11 +286,16 @@ const server = http.createServer(async (req, res) => {
         }
 
         const tasksData = await getTasksFromGithub();
-        const taskIndex = tasksData.tasks.findIndex(t => t.id === taskId || t.id === parseInt(taskId));
+        const numTaskId = parseInt(taskId) || taskId;
+        const taskIndex = tasksData.tasks.findIndex(t => {
+          const tId = parseInt(t.id) || t.id;
+          const searchId = parseInt(taskId) || taskId;
+          return tId === searchId || t.id === taskId;
+        });
 
         if (taskIndex === -1) {
           res.writeHead(404);
-          res.end(JSON.stringify({ error: 'Task not found' }));
+          res.end(JSON.stringify({ error: `Task ${taskId} not found` }));
           return;
         }
 
@@ -301,8 +316,9 @@ const server = http.createServer(async (req, res) => {
           task: updatedTask
         }));
       } catch (error) {
+        console.error('Update error:', error);
         res.writeHead(500);
-        res.end(JSON.stringify({ error: error.message }));
+        res.end(JSON.stringify({ ok: false, error: error.message }));
       }
     });
     return;

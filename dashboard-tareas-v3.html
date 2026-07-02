@@ -1124,22 +1124,30 @@
       if (!currentEditingTask) return;
 
       try {
+        console.log('Guardando tarea:', currentEditingTask);
+        const payload = {
+          taskId: currentEditingTask.id,
+          title: currentEditingTask.title,
+          category: currentEditingTask.category,
+          state: currentEditingTask.state,
+          delegated: currentEditingTask.delegated,
+          date: currentEditingTask.date
+        };
+        console.log('Payload:', payload);
+
         const response = await fetch(`${BACKEND_URL}/api/update-task`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            taskId: currentEditingTask.id,
-            title: currentEditingTask.title,
-            category: currentEditingTask.category,
-            state: currentEditingTask.state,
-            delegated: currentEditingTask.delegated,
-            date: currentEditingTask.date
-          })
+          body: JSON.stringify(payload)
         });
 
+        const responseText = await response.text();
+        console.log('Response status:', response.status);
+        console.log('Response body:', responseText);
+
         if (!response.ok) {
-          console.error('Save error:', await response.text());
-          alert('⚠️ Error al guardar');
+          console.error('Save error:', responseText);
+          alert(`❌ Error al guardar (${response.status}): ${responseText}`);
           return;
         }
 
@@ -1148,7 +1156,7 @@
         closeModal();
       } catch (e) {
         console.error('Save error:', e);
-        alert('❌ Error de conexión');
+        alert(`❌ Error de conexión: ${e.message}`);
       }
     }
 
@@ -1168,6 +1176,7 @@
       }
 
       try {
+        console.log('Eliminando tarea:', taskToDelete.id);
         // Primero elimina del backend (fuente de verdad)
         const response = await fetch(`${BACKEND_URL}/api/delete-task`, {
           method: 'POST',
@@ -1175,12 +1184,20 @@
           body: JSON.stringify({ taskId: taskToDelete.id })
         });
 
-        const result = await response.json();
+        const responseText = await response.text();
+        console.log('Delete response status:', response.status);
+        console.log('Delete response body:', responseText);
+
+        let result = {};
+        try {
+          result = JSON.parse(responseText);
+        } catch (e) {
+          console.error('Error parsing response:', e);
+        }
 
         if (!response.ok || !result.ok) {
-          alert('❌ Error al eliminar la tarea');
+          alert(`❌ Error al eliminar la tarea (${response.status})`);
           console.error('Delete error:', result);
-          render();
           closeModal();
           return;
         }
@@ -1192,7 +1209,7 @@
         closeModal();
 
       } catch (e) {
-        alert('❌ Error de conexión al eliminar');
+        alert(`❌ Error de conexión al eliminar: ${e.message}`);
         console.error('Delete error:', e.message);
       }
     }
