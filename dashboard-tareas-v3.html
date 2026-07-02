@@ -19,13 +19,13 @@
         const remoteTasks = data.tasks || [];
         const localTasks = JSON.parse(localStorage.getItem('snoopy-tasks-v3') || '[]');
 
-        const localIds = new Set(localTasks.map(t => t.id));
-        const newTasks = remoteTasks.filter(t => !localIds.has(t.id));
+        // GitHub es la fuente de verdad: si cambió, sincroniza todo
+        const localJson = JSON.stringify(localTasks.sort((a, b) => a.id - b.id));
+        const remoteJson = JSON.stringify(remoteTasks.sort((a, b) => a.id - b.id));
 
-        if (newTasks.length > 0) {
-          localTasks.push(...newTasks);
-          localStorage.setItem('snoopy-tasks-v3', JSON.stringify(localTasks));
-          location.reload(); // Recargar para mostrar nuevas tareas
+        if (localJson !== remoteJson) {
+          localStorage.setItem('snoopy-tasks-v3', JSON.stringify(remoteTasks));
+          location.reload(); // Recargar con datos de GitHub
         }
       } catch (error) {
         console.log('Sync: sin conexión a GitHub');
