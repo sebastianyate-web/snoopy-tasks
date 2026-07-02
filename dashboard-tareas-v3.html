@@ -1120,15 +1120,28 @@
       }
     }
 
-    function deleteTask() {
+    async function deleteTask() {
       if (!currentEditingTask) return;
 
       if (!confirm(`¿Eliminar "${currentEditingTask.title || currentEditingTask.description}"?`)) {
         return;
       }
 
-      tasks.splice(tasks.indexOf(currentEditingTask), 1);
+      const taskToDelete = currentEditingTask;
+      tasks.splice(tasks.indexOf(taskToDelete), 1);
       saveToLocalStorage();
+
+      // Eliminar también de GitHub (via backend)
+      try {
+        await fetch('https://snoopy-tasks-production.up.railway.app/api/delete-task', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ taskId: taskToDelete.id })
+        });
+      } catch (e) {
+        console.log('Error al eliminar de GitHub:', e.message);
+      }
+
       render();
       closeModal();
     }

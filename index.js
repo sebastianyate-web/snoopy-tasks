@@ -192,6 +192,37 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // API para eliminar tarea
+  if (req.url === '/api/delete-task' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', async () => {
+      try {
+        const { taskId } = JSON.parse(body);
+        if (!taskId) {
+          res.writeHead(400);
+          res.end(JSON.stringify({ error: 'taskId required' }));
+          return;
+        }
+
+        const tasksData = await getTasksFromGithub();
+        const taskToDelete = tasksData.tasks.find(t => t.id === taskId);
+        tasksData.tasks = tasksData.tasks.filter(t => t.id !== taskId);
+
+        const saved = await saveTasksToGithub(tasksData);
+        res.writeHead(200);
+        res.end(JSON.stringify({
+          ok: saved,
+          deleted: taskToDelete?.title || taskToDelete?.description || taskId
+        }));
+      } catch (error) {
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: error.message }));
+      }
+    });
+    return;
+  }
+
   res.writeHead(404);
   res.end(JSON.stringify({ error: 'Not found' }));
 });
