@@ -199,6 +199,14 @@
       "state": "todo",
       "delegated": null,
       "date": "2026-07-02"
+    },
+    {
+      "id": 1783090367265,
+      "title": "Consultar bolsas y variedades en Madrid. Sofi",
+      "category": "IA",
+      "state": "todo",
+      "delegated": null,
+      "date": "2026-07-03"
     }
   ]
 }
