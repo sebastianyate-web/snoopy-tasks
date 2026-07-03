@@ -517,6 +517,7 @@
       <div class="tabs">
         <button class="tab-btn active" data-tab="categorias">Mis tareas</button>
         <button class="tab-btn" data-tab="estados">Por estado</button>
+        <button class="tab-btn" data-tab="delegadas">Delegadas</button>
       </div>
 
       <!-- TAB 1: POR CATEGORÍA -->
@@ -527,6 +528,11 @@
       <!-- TAB 2: POR ESTADO -->
       <div class="tab-content" id="tab-estados">
         <div class="kanban-container" id="kanban-container"></div>
+      </div>
+
+      <!-- TAB 3: DELEGADAS -->
+      <div class="tab-content" id="tab-delegadas">
+        <div class="categories-grid" id="delegadas-grid"></div>
       </div>
     </main>
   </div>
@@ -596,7 +602,7 @@
       { id: 9, category: 'Madrid', title: 'Conteo de devoluciones de Toni', state: 'todo', delegated: 'Sofi', date: '2026-07-02' },
       { id: 10, category: 'Madrid', title: 'Conteo de devoluciones de Jens', state: 'todo', delegated: 'Sofi', date: '2026-07-02' },
       { id: 11, category: 'Madrid', title: 'Coordinación de devolución de Jens', state: 'todo', delegated: 'Sofi', date: '2026-07-02' },
-      { id: 12, category: 'Oscar', title: 'Pruebas de germinación en Miami', state: 'todo', delegated: null, date: '2026-07-02' },
+      { id: 12, category: 'Miami', title: 'Pruebas de germinación en Miami', state: 'todo', delegated: null, date: '2026-07-02' },
       { id: 13, category: 'Pao', title: 'Respuesta para David', state: 'todo', delegated: null, date: '2026-07-02' },
       { id: 14, category: 'IA', title: 'Terminar configuración de Ms. Bubbles sin automatización', state: 'todo', delegated: null, date: '2026-07-02' },
       { id: 15, category: 'IA', title: 'Carpetas de Marketing en Nelly organizadas', state: 'todo', delegated: null, date: '2026-07-02' },
@@ -918,6 +924,57 @@
       renderStats();
       renderCategorias();
       renderEstados();
+      renderDelegadas();
+    }
+
+    function renderDelegadas() {
+      const grid = document.getElementById('delegadas-grid');
+      if (!grid) return;
+      grid.innerHTML = '';
+
+      const source = filterTasks(tasks);
+
+      delegateOptions.forEach(person => {
+        const personTasks = source.filter(t => t.delegated === person);
+        const color = personColors[person] || '#1fa8a6';
+
+        const card = document.createElement('div');
+        card.className = 'category-card';
+        card.style.borderTop = `3px solid ${color}`;
+
+        const header = document.createElement('div');
+        header.className = 'category-header';
+        header.innerHTML = `
+          <div class="assignee-dot" style="background:${color}; width:22px; height:22px; font-size:11px">${person.charAt(0)}</div>
+          <div class="category-name" style="color: ${color}">${person}</div>
+          <div class="category-count" style="background: ${color}1a; color: ${color}">${personTasks.length}</div>
+        `;
+        card.appendChild(header);
+
+        if (personTasks.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'empty-state';
+          empty.textContent = 'Sin tareas delegadas';
+          card.appendChild(empty);
+        }
+
+        personTasks.forEach(task => {
+          const item = document.createElement('div');
+          item.className = `task-item state-${task.state}`;
+          item.innerHTML = `
+            <div class="task-title">${task.title}</div>
+            <div class="task-meta">
+              <span class="task-state">${stateLabels[task.state]}</span>
+              <span class="task-delegated">${task.category}</span>
+              <span class="task-date">${task.date}</span>
+            </div>
+          `;
+          item.addEventListener('click', () => openModal(task));
+          card.appendChild(item);
+        });
+
+        grid.appendChild(card);
+      });
     }
 
     function renderCategorias() {
