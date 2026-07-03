@@ -92,6 +92,56 @@ async function saveTasksToGithub(tasksData, message = 'Update tasks') {
   }
 }
 
+// ===== PETICIONES (peticiones.json en GitHub) =====
+async function getPetitionsFromGithub() {
+  try {
+    const response = await fetch(
+      `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/petitions.json`,
+      { headers: { 'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json' } }
+    );
+    if (!response.ok) return { petitions: [] };
+    const data = await response.json();
+    return JSON.parse(Buffer.from(data.content, 'base64').toString());
+  } catch (error) {
+    console.error('Petitions fetch error:', error.message);
+    return { petitions: [] };
+  }
+}
+
+async function savePetitionsToGithub(petitionsData, message = 'Update petitions') {
+  try {
+    let sha = null;
+    try {
+      const getRes = await fetch(
+        `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/petitions.json`,
+        { headers: { 'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json' } }
+      );
+      if (getRes.ok) sha = (await getRes.json()).sha;
+    } catch (e) {}
+
+    const content = Buffer.from(JSON.stringify(petitionsData, null, 2)).toString('base64');
+    const body = { message, content, branch: GITHUB_BRANCH };
+    if (sha) body.sha = sha;
+
+    const response = await fetch(
+      `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/petitions.json`,
+      {
+        method: 'PUT',
+        headers: {
+          'Authorization': `token ${GITHUB_TOKEN}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      }
+    );
+    return response.ok;
+  } catch (error) {
+    console.error('Petitions save error:', error.message);
+    return false;
+  }
+}
+
 const server = http.createServer(async (req, res) => {
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -200,7 +250,7 @@ const server = http.createServer(async (req, res) => {
     req.on('data', chunk => body += chunk);
     req.on('end', async () => {
       try {
-        const { title, category, state = 'todo', delegated = null, date } = JSON.parse(body);
+        const { title, category, state = 'todo', delegated = null, priority = null, date } = JSON.parse(body);
         if (!title || !category) {
           res.writeHead(400);
           res.end(JSON.stringify({ error: 'title and category required' }));
@@ -214,6 +264,7 @@ const server = http.createServer(async (req, res) => {
           category,
           state,
           delegated,
+          priority,
           date: date || new Date().toISOString().split('T')[0]
         };
 
@@ -278,7 +329,7 @@ const server = http.createServer(async (req, res) => {
     req.on('data', chunk => body += chunk);
     req.on('end', async () => {
       try {
-        const { taskId, title, category, state, delegated, date } = JSON.parse(body);
+        const { taskId, title, category, state, delegated, priority, date } = JSON.parse(body);
         if (!taskId) {
           res.writeHead(400);
           res.end(JSON.stringify({ error: 'taskId required' }));
@@ -305,6 +356,7 @@ const server = http.createServer(async (req, res) => {
           ...(category && { category }),
           ...(state && { state }),
           ...(delegated !== undefined && { delegated }),
+          ...(priority !== undefined && { priority }),
           ...(date && { date })
         };
 
@@ -317,6 +369,66 @@ const server = http.createServer(async (req, res) => {
         }));
       } catch (error) {
         console.error('Update error:', error);
+        res.writeHead(500);
+        res.end(JSON.stringify({ ok: false, error: error.message }));
+      }
+    });
+    return;
+  }
+
+  // ===== PETICIONES =====
+  // Listar peticiones
+  if (req.url === '/api/petitions' && req.method === 'GET') {
+    const data = await getPetitionsFromGithub();
+    res.writeHead(200);
+    res.end(JSON.stringify(data));
+    return;
+  }
+
+  // Agregar petición (la deja Manu, o se carga desde su board)
+  if (req.url === '/api/add-petition' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', async () => {
+      try {
+        const { taskId = null, taskTitle = '', type, value = null, note = '' } = JSON.parse(body);
+        if (!type) {
+          res.writeHead(400);
+          res.end(JSON.stringify({ error: 'type required (delegar|prioridad|pausar|nota)' }));
+          return;
+        }
+        const data = await getPetitionsFromGithub();
+        const petition = { id: Date.now(), taskId, taskTitle, type, value, note, created: new Date().toISOString() };
+        data.petitions.push(petition);
+        const saved = await savePetitionsToGithub(data, `Add petition: ${type} ${taskTitle}`);
+        res.writeHead(200);
+        res.end(JSON.stringify({ ok: saved, petition }));
+      } catch (error) {
+        res.writeHead(500);
+        res.end(JSON.stringify({ ok: false, error: error.message }));
+      }
+    });
+    return;
+  }
+
+  // Resolver/descartar petición (quitarla de la bandeja)
+  if (req.url === '/api/resolve-petition' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', async () => {
+      try {
+        const { petitionId } = JSON.parse(body);
+        if (!petitionId) {
+          res.writeHead(400);
+          res.end(JSON.stringify({ error: 'petitionId required' }));
+          return;
+        }
+        const data = await getPetitionsFromGithub();
+        data.petitions = data.petitions.filter(p => p.id !== petitionId && p.id !== parseInt(petitionId));
+        const saved = await savePetitionsToGithub(data, `Resolve petition ${petitionId}`);
+        res.writeHead(200);
+        res.end(JSON.stringify({ ok: saved }));
+      } catch (error) {
         res.writeHead(500);
         res.end(JSON.stringify({ ok: false, error: error.message }));
       }

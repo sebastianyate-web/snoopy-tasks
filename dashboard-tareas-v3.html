@@ -17,6 +17,7 @@
         title: t.title || t.description || 'Sin título',
         state: t.state || (t.status === 'Por hacer' ? 'todo' : t.status) || 'todo',
         delegated: t.delegated !== undefined ? t.delegated : (t.assigned || null),
+        priority: t.priority || null,
         date: t.date || (t.created ? t.created.split('T')[0] : '2026-07-02')
       };
     }
@@ -372,10 +373,67 @@
     .kanban-card.state-progress { border-left-color: var(--st-progress); }
     .kanban-card.state-done { border-left-color: var(--st-done); }
     .kanban-card.state-parked { border-left-color: var(--st-parked); }
-    .kanban-card-title { font-weight: 600; margin-bottom: 10px; font-size: 13px; line-height: 1.35; color: var(--ink); }
+    .kanban-card-top { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px; }
+    .kanban-card-title { font-weight: 600; font-size: 13px; line-height: 1.35; color: var(--ink); }
+
+    /* Badge de prioridad P1/P2/P3 */
+    .prio-badge {
+      font-size: 10px; font-weight: 800; letter-spacing: 0.3px;
+      padding: 2px 8px; border-radius: 6px; flex-shrink: 0;
+    }
     .kanban-card-meta { display: flex; flex-direction: column; gap: 5px; font-size: 11px; color: var(--ink-soft); }
 
     .empty-state { text-align: center; padding: 24px 16px; color: var(--ink-faint); font-size: 13px; }
+
+    /* ===== PETICIONES ===== */
+    .tab-count {
+      display: none; align-items: center; justify-content: center;
+      min-width: 18px; height: 18px; padding: 0 5px; margin-left: 4px;
+      background: #ef4444; color: #fff; border-radius: 20px; font-size: 11px; font-weight: 700;
+    }
+    .petition-form {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 20px 22px; margin-bottom: 22px; box-shadow: var(--shadow);
+    }
+    .petition-form-row {
+      display: grid; grid-template-columns: 2fr 1.3fr 1.3fr 2fr auto; gap: 10px; align-items: center;
+    }
+    .petition-form-row select, .petition-form-row input {
+      padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px;
+      font-size: 13px; font-family: inherit; color: var(--ink); background: var(--surface);
+    }
+    .petition-form-row select:focus, .petition-form-row input:focus {
+      outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px rgba(31,168,166,0.1);
+    }
+    #pet-add-btn {
+      padding: 10px 18px; background: var(--brand); color: #fff; border: none;
+      border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 13px; white-space: nowrap;
+    }
+    #pet-add-btn:hover { background: var(--brand-deep); }
+
+    #peticiones-list { display: flex; flex-direction: column; gap: 12px; }
+    .petition-card {
+      background: var(--surface); border: 1px solid var(--border); border-left: 4px solid #ff9a44;
+      border-radius: 14px; padding: 16px 18px; box-shadow: var(--shadow);
+      display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+    }
+    .petition-action { font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 3px; }
+    .petition-action b { color: var(--brand-deep); }
+    .petition-task { font-size: 13px; color: var(--ink-soft); }
+    .petition-note { font-size: 12px; color: var(--ink-faint); font-style: italic; margin-top: 4px; }
+    .petition-btns { display: flex; gap: 8px; flex-shrink: 0; }
+    .btn-apply, .btn-dismiss {
+      padding: 8px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer;
+      font-family: inherit; border: 1px solid var(--border); transition: all 0.18s;
+    }
+    .btn-apply { background: var(--brand); color: #fff; border-color: var(--brand); }
+    .btn-apply:hover { background: var(--brand-deep); }
+    .btn-dismiss { background: var(--surface); color: var(--ink-soft); }
+    .btn-dismiss:hover { border-color: #ef4444; color: #ef4444; }
+
+    @media (max-width: 760px) {
+      .petition-form-row { grid-template-columns: 1fr; }
+    }
 
     /* ===== MODAL ===== */
     .modal {
@@ -488,6 +546,7 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
             <input type="text" id="search-input" placeholder="Buscar tarea, categoría, persona...">
           </div>
+          <button class="btn" id="report-btn">📋 Reporte para Manu</button>
           <button class="btn" id="export-btn">⬇ Exportar CSV</button>
         </div>
       </div>
@@ -518,6 +577,7 @@
         <button class="tab-btn active" data-tab="categorias">Mis tareas</button>
         <button class="tab-btn" data-tab="estados">Por estado</button>
         <button class="tab-btn" data-tab="delegadas">Delegadas</button>
+        <button class="tab-btn" data-tab="peticiones">Peticiones de Manu <span id="pet-count" class="tab-count"></span></button>
       </div>
 
       <!-- TAB 1: POR CATEGORÍA -->
@@ -534,6 +594,27 @@
       <div class="tab-content" id="tab-delegadas">
         <div class="categories-grid" id="delegadas-grid"></div>
       </div>
+
+      <!-- TAB 4: PETICIONES DE MANU -->
+      <div class="tab-content" id="tab-peticiones">
+        <div class="petition-form">
+          <div class="form-title">Registrar petición de Manu</div>
+          <p style="font-size:12px; color:var(--ink-soft); margin-bottom:14px;">Lo que Manu pida en su Board se registra acá y lo aprobás con un click. También podés cargarla a mano.</p>
+          <div class="petition-form-row">
+            <select id="pet-task"></select>
+            <select id="pet-type">
+              <option value="prioridad">Cambiar prioridad</option>
+              <option value="delegar">Delegar a</option>
+              <option value="pausar">Pausar (Aparcar)</option>
+              <option value="nota">Nota / comentario</option>
+            </select>
+            <select id="pet-value"></select>
+            <input type="text" id="pet-note" placeholder="Nota (opcional)">
+            <button id="pet-add-btn">＋ Registrar</button>
+          </div>
+        </div>
+        <div id="peticiones-list"></div>
+      </div>
     </main>
   </div>
 
@@ -542,6 +623,11 @@
     <div class="modal-content">
       <div class="modal-title">Editar tarea</div>
       <div class="modal-task-name" id="modal-task-name"></div>
+
+      <div class="modal-section">
+        <label class="modal-label">Prioridad</label>
+        <div class="modal-buttons" id="priority-buttons" style="grid-template-columns: repeat(4, 1fr);"></div>
+      </div>
 
       <div class="modal-section">
         <label class="modal-label">Estado</label>
@@ -644,6 +730,20 @@
       return `<span class="assignee"><span class="assignee-dot" style="background:${color}">${initial}</span>${person}</span>`;
     }
 
+    // Prioridades P1/P2/P3 (P1 = más urgente)
+    const priorityMeta = {
+      'P1': { color: '#ef4444', name: 'Urgente' },
+      'P2': { color: '#f59e0b', name: 'Media' },
+      'P3': { color: '#3b82f6', name: 'Baja' }
+    };
+    const priorityOptions = ['P1', 'P2', 'P3'];
+
+    function priorityBadge(p) {
+      if (!p || !priorityMeta[p]) return '';
+      const m = priorityMeta[p];
+      return `<span class="prio-badge" style="background:${m.color}1a; color:${m.color}" title="${m.name}">${p}</span>`;
+    }
+
     let currentEditingTask = null;
     let searchTerm = '';
 
@@ -655,6 +755,7 @@
       setupNewTaskForm();
       setupSettings();
       setupSearch();
+      setupPeticiones();
       setGreetingDate();
       render();
 
@@ -662,11 +763,16 @@
       window.tasksUpdated = () => {
         loadFromLocalStorage();
         rebuildCategoryDropdown();
+        fillPetTasks();
         render();
       };
 
       // Primer sync inmediato al abrir
       syncTasksFromBackend();
+
+      // Peticiones de Manu: cargar y refrescar
+      fetchPetitions();
+      setInterval(fetchPetitions, 15000);
     }
 
     function setGreetingDate() {
@@ -731,6 +837,7 @@
 
     function setupExport() {
       document.getElementById('export-btn').addEventListener('click', exportTasks);
+      document.getElementById('report-btn').addEventListener('click', generarReporteManu);
     }
 
     function setupNewTaskForm() {
@@ -812,6 +919,7 @@
         title: title,
         state: 'todo',
         delegated: null,
+        priority: null,
         date: new Date().toISOString().split('T')[0]
       };
 
@@ -964,6 +1072,7 @@
           item.innerHTML = `
             <div class="task-title">${task.title}</div>
             <div class="task-meta">
+              ${priorityBadge(task.priority)}
               <span class="task-state">${stateLabels[task.state]}</span>
               <span class="task-delegated">${task.category}</span>
               <span class="task-date">${task.date}</span>
@@ -1027,6 +1136,7 @@
           item.innerHTML = `
             <div class="task-title">${task.title}</div>
             <div class="task-meta">
+              ${priorityBadge(task.priority)}
               <span class="task-state">${stateLabels[task.state]}</span>
               ${assigneeBadge(task.delegated)}
               <span class="task-date">${task.date}</span>
@@ -1071,7 +1181,7 @@
             const card = document.createElement('div');
             card.className = `kanban-card state-${state}`;
             card.innerHTML = `
-              <div class="kanban-card-title">${task.title}</div>
+              <div class="kanban-card-top">${priorityBadge(task.priority)}<div class="kanban-card-title">${task.title}</div></div>
               <div class="kanban-card-meta">
                 <div>${task.category}</div>
                 ${assigneeBadge(task.delegated)}
@@ -1090,6 +1200,32 @@
     function openModal(task) {
       currentEditingTask = task;
       document.getElementById('modal-task-name').textContent = task.title;
+
+      // Priority buttons
+      const priorityButtons = document.getElementById('priority-buttons');
+      priorityButtons.innerHTML = '';
+      const noPrio = document.createElement('button');
+      noPrio.className = `modal-btn ${!task.priority ? 'selected' : ''}`;
+      noPrio.textContent = '—';
+      noPrio.title = 'Sin prioridad';
+      noPrio.addEventListener('click', () => {
+        document.querySelectorAll('#priority-buttons .modal-btn').forEach(b => b.classList.remove('selected'));
+        noPrio.classList.add('selected');
+        task.priority = null;
+      });
+      priorityButtons.appendChild(noPrio);
+      priorityOptions.forEach(p => {
+        const btn = document.createElement('button');
+        btn.className = `modal-btn ${task.priority === p ? 'selected' : ''}`;
+        btn.textContent = p;
+        btn.title = priorityMeta[p].name;
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#priority-buttons .modal-btn').forEach(b => b.classList.remove('selected'));
+          btn.classList.add('selected');
+          task.priority = p;
+        });
+        priorityButtons.appendChild(btn);
+      });
 
       // State buttons
       const stateButtons = document.getElementById('state-buttons');
@@ -1149,6 +1285,7 @@
         category: currentEditingTask.category,
         state: currentEditingTask.state,
         delegated: currentEditingTask.delegated,
+        priority: currentEditingTask.priority,
         date: currentEditingTask.date
       };
 
@@ -1233,6 +1370,157 @@
       toast._timer = setTimeout(() => { toast.style.opacity = '0'; }, 3500);
     }
 
+    // ===== PETICIONES DE MANU =====
+    let petitions = [];
+
+    function setupPeticiones() {
+      const typeSel = document.getElementById('pet-type');
+      if (!typeSel) return;
+      fillPetTasks();
+      fillPetValues();
+      typeSel.addEventListener('change', fillPetValues);
+      document.getElementById('pet-add-btn').addEventListener('click', addPetition);
+    }
+
+    function fillPetTasks() {
+      const taskSel = document.getElementById('pet-task');
+      if (!taskSel) return;
+      const current = taskSel.value;
+      taskSel.innerHTML = '<option value="">(Elegí una tarea…)</option>' +
+        [...tasks].sort((a, b) => a.title.localeCompare(b.title))
+          .map(t => `<option value="${t.id}">${t.title}</option>`).join('');
+      taskSel.value = current;
+    }
+
+    function fillPetValues() {
+      const type = document.getElementById('pet-type').value;
+      const valueSel = document.getElementById('pet-value');
+      if (type === 'prioridad') {
+        valueSel.style.display = '';
+        valueSel.innerHTML = priorityOptions.map(p => `<option value="${p}">${p} · ${priorityMeta[p].name}</option>`).join('');
+      } else if (type === 'delegar') {
+        valueSel.style.display = '';
+        valueSel.innerHTML = delegateOptions.map(p => `<option value="${p}">${p}</option>`).join('');
+      } else {
+        valueSel.style.display = 'none';
+        valueSel.innerHTML = '';
+      }
+    }
+
+    async function fetchPetitions() {
+      try {
+        const r = await fetch(`${BACKEND_URL}/api/petitions`);
+        if (!r.ok) return;
+        const data = await r.json();
+        petitions = data.petitions || [];
+        renderPeticiones();
+      } catch (e) { /* sin conexión */ }
+    }
+
+    function renderPeticiones() {
+      const list = document.getElementById('peticiones-list');
+      const countEl = document.getElementById('pet-count');
+      if (countEl) {
+        countEl.textContent = petitions.length || '';
+        countEl.style.display = petitions.length ? 'inline-flex' : 'none';
+      }
+      if (!list) return;
+
+      if (petitions.length === 0) {
+        list.innerHTML = '<div class="empty-state">No hay peticiones pendientes de Manu 🎉</div>';
+        return;
+      }
+
+      list.innerHTML = '';
+      petitions.forEach(p => {
+        let accion = '';
+        if (p.type === 'delegar') accion = `Delegar a <b>${p.value}</b>`;
+        else if (p.type === 'prioridad') accion = `Poner prioridad <b>${p.value}</b>`;
+        else if (p.type === 'pausar') accion = `Pausar (mover a Aparcado)`;
+        else accion = `Nota de Manu`;
+
+        const card = document.createElement('div');
+        card.className = 'petition-card';
+        card.innerHTML = `
+          <div class="petition-main">
+            <div class="petition-action">${accion}</div>
+            <div class="petition-task">${p.taskTitle || '(sin tarea específica)'}</div>
+            ${p.note ? `<div class="petition-note">"${p.note}"</div>` : ''}
+          </div>
+          <div class="petition-btns">
+            <button class="btn-apply">✓ Aplicar</button>
+            <button class="btn-dismiss">✕ Descartar</button>
+          </div>
+        `;
+        card.querySelector('.btn-apply').addEventListener('click', () => applyPetition(p));
+        card.querySelector('.btn-dismiss').addEventListener('click', () => dismissPetition(p));
+        list.appendChild(card);
+      });
+    }
+
+    async function applyPetition(p) {
+      const task = tasks.find(t => String(t.id) === String(p.taskId));
+      if (task && p.type !== 'nota') {
+        if (p.type === 'delegar') task.delegated = p.value;
+        else if (p.type === 'prioridad') task.priority = p.value;
+        else if (p.type === 'pausar') task.state = 'parked';
+        saveToLocalStorage();
+        render();
+        try {
+          await fetch(`${BACKEND_URL}/api/update-task`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              taskId: task.id, title: task.title, category: task.category,
+              state: task.state, delegated: task.delegated, priority: task.priority, date: task.date
+            })
+          });
+        } catch (e) { console.error('apply update error', e.message); }
+      }
+      await resolvePetition(p);
+      showToast('✓ Petición aplicada');
+    }
+
+    async function dismissPetition(p) {
+      await resolvePetition(p);
+      showToast('Petición descartada');
+    }
+
+    async function resolvePetition(p) {
+      petitions = petitions.filter(x => x.id !== p.id);
+      renderPeticiones();
+      try {
+        await fetch(`${BACKEND_URL}/api/resolve-petition`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ petitionId: p.id })
+        });
+      } catch (e) { console.error('resolve error', e.message); }
+    }
+
+    async function addPetition() {
+      const taskId = document.getElementById('pet-task').value || null;
+      const type = document.getElementById('pet-type').value;
+      const value = document.getElementById('pet-value').value || null;
+      const note = document.getElementById('pet-note').value.trim();
+      const taskTitle = taskId ? (tasks.find(t => String(t.id) === String(taskId))?.title || '') : '';
+
+      if ((type === 'delegar' || type === 'prioridad') && !value) { alert('Elegí un valor'); return; }
+      if (type !== 'nota' && !taskId) { alert('Elegí una tarea'); return; }
+      if (type === 'nota' && !note) { alert('Escribí la nota'); return; }
+
+      const petition = { id: Date.now(), taskId, taskTitle, type, value, note };
+      petitions.push(petition);
+      renderPeticiones();
+      document.getElementById('pet-note').value = '';
+
+      try {
+        await fetch(`${BACKEND_URL}/api/add-petition`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(petition)
+        });
+        showToast('Petición registrada');
+      } catch (e) { showToast('Registrada local (sin conexión)'); }
+    }
+
     function saveToLocalStorage() {
       localStorage.setItem('snoopy-tasks-v3', JSON.stringify(tasks));
     }
@@ -1254,11 +1542,12 @@
 
     function exportTasks() {
       const csv = [
-        ['Categoría', 'Descripción', 'Estado', 'Delegado a', 'Fecha'].join(','),
+        ['Categoría', 'Descripción', 'Estado', 'Prioridad', 'Delegado a', 'Fecha'].join(','),
         ...tasks.map(t => [
           `"${t.category}"`,
           `"${t.title}"`,
           `"${stateLabels[t.state]}"`,
+          `"${t.priority || '—'}"`,
           `"${t.delegated || '—'}"`,
           `"${t.date}"`
         ].join(','))
@@ -1269,6 +1558,71 @@
       link.href = URL.createObjectURL(blob);
       link.download = `tareas-export-${new Date().toISOString().split('T')[0]}.csv`;
       link.click();
+    }
+
+    // ===== REPORTE PARA MANU (formato Board de Manuel) =====
+    function generarReporteManu() {
+      const hoy = new Date().toISOString().split('T')[0];
+      const orden = { 'P1': 0, 'P2': 1, 'P3': 2, null: 3 };
+      const activas = tasks.filter(t => t.state !== 'done');
+      const ordenadas = [...activas].sort((a, b) =>
+        (orden[a.priority] ?? 3) - (orden[b.priority] ?? 3)
+      );
+
+      const linea = t => {
+        const prio = t.priority ? `[${t.priority}]` : '[ — ]';
+        const estado = stateLabels[t.state];
+        const quien = t.delegated ? ` · delegada a ${t.delegated}` : '';
+        return `${prio} ${t.title}  (${t.category} · ${estado}${quien})`;
+      };
+
+      const porHacer = ordenadas.filter(t => t.state !== 'parked');
+      const pausadas = ordenadas.filter(t => t.state === 'parked');
+
+      const cuenta = p => tasks.filter(t => t.priority === p && t.state !== 'done').length;
+
+      const body =
+`RESUMEN (${hoy})
+Total activas: ${activas.length}  |  P1: ${cuenta('P1')}  ·  P2: ${cuenta('P2')}  ·  P3: ${cuenta('P3')}  ·  Pausadas: ${pausadas.length}
+
+LISTA DE TAREAS (ordenadas por prioridad)
+${porHacer.map(linea).join('\n')}
+${pausadas.length ? `\nPAUSADAS\n${pausadas.map(linea).join('\n')}` : ''}
+
+MANU, ¿QUÉ AJUSTAMOS?
+- ¿Alguna tarea que deba DELEGAR y no está asignada?
+- ¿Alguna PRIORIDAD que cambiar (P1/P2/P3)?
+- ¿Algo que PAUSAR para centrar foco en otra cosa más importante?
+
+Responde con tus peticiones y las aplico en el tablero.`;
+
+      const post =
+`====== PEGAR EN EL BOARD DE MANUEL (NEW POST) ======
+Kind: Report
+Target bot: —
+Severity: Low
+
+Title:
+Reporte de tareas de Sebastián — ${hoy}
+
+Body:
+${body}
+====================================================`;
+
+      // Copia al portapapeles + descarga como respaldo
+      navigator.clipboard?.writeText(post).then(
+        () => showToast('📋 Reporte copiado. Pégalo en el Board de Manuel.'),
+        () => showToast('Reporte generado (copia manual desde el archivo).')
+      );
+
+      const blob = new Blob([post], { type: 'text/plain;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `reporte-manu-${hoy}.txt`;
+      link.click();
+
+      // Abre el board para pegarlo
+      window.open('https://alphatype-ssot.pages.dev/', '_blank');
     }
 
     init();
