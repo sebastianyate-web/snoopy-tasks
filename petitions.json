@@ -1,3 +1,13 @@
 {
-  "petitions": []
+  "petitions": [
+    {
+      "id": 1783093145826,
+      "taskId": 3,
+      "taskTitle": "Master Sales",
+      "type": "prioridad",
+      "value": "P1",
+      "note": "Prueba",
+      "created": "2026-07-03T15:39:05.826Z"
+    }
+  ]
 }
