@@ -10,7 +10,7 @@
     },
     {
       "id": 2,
-      "category": "Sofi",
+      "category": "Madrid",
       "title": "Conteo de devolución de Mono",
       "state": "todo",
       "delegated": "Sofi",
@@ -66,7 +66,7 @@
     },
     {
       "id": 9,
-      "category": "Sofi",
+      "category": "Madrid",
       "title": "Conteo de devoluciones de Toni",
       "state": "todo",
       "delegated": "Sofi",
@@ -74,7 +74,7 @@
     },
     {
       "id": 10,
-      "category": "Sofi",
+      "category": "Madrid",
       "title": "Conteo de devoluciones de Jens",
       "state": "todo",
       "delegated": "Sofi",
@@ -82,7 +82,7 @@
     },
     {
       "id": 11,
-      "category": "Sofi",
+      "category": "Madrid",
       "title": "Coordinación de devolución de Jens",
       "state": "todo",
       "delegated": "Sofi",
@@ -138,7 +138,7 @@
     },
     {
       "id": 18,
-      "category": "Raw/IA",
+      "category": "Raw",
       "title": "Brand Book de Raw",
       "state": "todo",
       "delegated": "Pau",

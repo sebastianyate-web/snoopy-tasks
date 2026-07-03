@@ -325,6 +325,18 @@
     }
     .task-date { font-size: 11px; color: var(--ink-faint); font-variant-numeric: tabular-nums; margin-left: auto; }
 
+    /* Avatar de persona asignada */
+    .assignee {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 11px; font-weight: 700; color: var(--ink-soft);
+      background: var(--border-soft); padding: 2px 9px 2px 2px; border-radius: 20px;
+    }
+    .assignee-dot {
+      width: 17px; height: 17px; border-radius: 50%; color: #fff;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 9px; font-weight: 700;
+    }
+
     /* ===== KANBAN VIEW ===== */
     .kanban-container {
       display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px;
@@ -574,23 +586,23 @@
   <script>
     const tasks = [
       { id: 1, category: 'Raw', title: 'Equivalencias de variedades - Llamada con Oto', state: 'todo', delegated: null, date: '2026-07-02' },
-      { id: 2, category: 'Sofi', title: 'Conteo de devolución de Mono', state: 'todo', delegated: 'Sofi', date: '2026-07-02' },
+      { id: 2, category: 'Madrid', title: 'Conteo de devolución de Mono', state: 'todo', delegated: 'Sofi', date: '2026-07-02' },
       { id: 3, category: 'Actualización', title: 'Master Sales', state: 'todo', delegated: null, date: '2026-07-02' },
       { id: 4, category: 'Seguimiento', title: 'Exportación Chile con Oto', state: 'todo', delegated: null, date: '2026-07-02' },
       { id: 5, category: 'Raw', title: 'Seguimiento Vials', state: 'todo', delegated: null, date: '2026-07-02' },
       { id: 6, category: 'Actualización', title: 'Órdenes y equivalencias con las muestras: Barney\'s Farm, Sean…', state: 'todo', delegated: null, date: '2026-07-02' },
       { id: 7, category: 'Raw', title: 'Seguimiento Packaging', state: 'todo', delegated: null, date: '2026-07-02' },
       { id: 8, category: 'Raw', title: 'Stickers y hoodies', state: 'todo', delegated: 'Pau', date: '2026-07-02' },
-      { id: 9, category: 'Sofi', title: 'Conteo de devoluciones de Toni', state: 'todo', delegated: 'Sofi', date: '2026-07-02' },
-      { id: 10, category: 'Sofi', title: 'Conteo de devoluciones de Jens', state: 'todo', delegated: 'Sofi', date: '2026-07-02' },
-      { id: 11, category: 'Sofi', title: 'Coordinación de devolución de Jens', state: 'todo', delegated: 'Sofi', date: '2026-07-02' },
+      { id: 9, category: 'Madrid', title: 'Conteo de devoluciones de Toni', state: 'todo', delegated: 'Sofi', date: '2026-07-02' },
+      { id: 10, category: 'Madrid', title: 'Conteo de devoluciones de Jens', state: 'todo', delegated: 'Sofi', date: '2026-07-02' },
+      { id: 11, category: 'Madrid', title: 'Coordinación de devolución de Jens', state: 'todo', delegated: 'Sofi', date: '2026-07-02' },
       { id: 12, category: 'Oscar', title: 'Pruebas de germinación en Miami', state: 'todo', delegated: null, date: '2026-07-02' },
       { id: 13, category: 'Pao', title: 'Respuesta para David', state: 'todo', delegated: null, date: '2026-07-02' },
       { id: 14, category: 'IA', title: 'Terminar configuración de Ms. Bubbles sin automatización', state: 'todo', delegated: null, date: '2026-07-02' },
       { id: 15, category: 'IA', title: 'Carpetas de Marketing en Nelly organizadas', state: 'todo', delegated: null, date: '2026-07-02' },
       { id: 16, category: 'IA', title: 'Tablero de Manu, mejoras del departamento', state: 'todo', delegated: null, date: '2026-07-02' },
       { id: 17, category: 'IA', title: 'Automatización procesos de marketing de alphatype: Grow Diaries Card y Weekly Breeders Highlight', state: 'todo', delegated: null, date: '2026-07-02' },
-      { id: 18, category: 'Raw/IA', title: 'Brand Book de Raw', state: 'todo', delegated: null, date: '2026-07-02' },
+      { id: 18, category: 'Raw', title: 'Brand Book de Raw', state: 'todo', delegated: null, date: '2026-07-02' },
       { id: 19, category: 'IA', title: 'Brand Book de alphatype', state: 'todo', delegated: null, date: '2026-07-02' },
       { id: 20, category: 'Marketing Alphatype', title: 'A15 campaña completa', state: 'todo', delegated: null, date: '2026-07-02' },
       { id: 21, category: 'IA', title: 'Skill de la generación de las fotos de las plantas', state: 'todo', delegated: null, date: '2026-07-02' },
@@ -608,6 +620,24 @@
     };
 
     const delegateOptions = ['Pau', 'Sofi', 'Oscar'];
+
+    // Categorías que siempre existen aunque no tengan tareas (aparecen en el menú y como tarjeta vacía)
+    const baseCategories = ['Miami', 'Comercial'];
+
+    // Color por persona asignada (para el avatar de delegación)
+    const personColors = {
+      'Pau': '#e8896b',
+      'Sofi': '#6366f1',
+      'Oscar': '#0ea5e9'
+    };
+
+    function assigneeBadge(person) {
+      if (!person) return '';
+      const color = personColors[person] || '#1fa8a6';
+      const initial = person.charAt(0).toUpperCase();
+      return `<span class="assignee"><span class="assignee-dot" style="background:${color}">${initial}</span>${person}</span>`;
+    }
+
     let currentEditingTask = null;
     let searchTerm = '';
 
@@ -662,7 +692,7 @@
       const select = document.getElementById('task-category-input');
       if (!select) return;
       const current = select.value;
-      const categories = [...new Set(tasks.map(t => t.category))].sort();
+      const categories = [...new Set([...tasks.map(t => t.category), ...baseCategories])].sort();
       select.innerHTML = '<option value="">Seleccionar...</option>';
       categories.forEach(cat => {
         const opt = document.createElement('option');
@@ -698,7 +728,7 @@
     }
 
     function setupNewTaskForm() {
-      const categories = [...new Set(tasks.map(t => t.category))].sort();
+      const categories = [...new Set([...tasks.map(t => t.category), ...baseCategories])].sort();
       const select = document.getElementById('task-category-input');
       categories.forEach(cat => {
         const opt = document.createElement('option');
@@ -903,8 +933,14 @@
 
       const byCategory = groupByCategory(source);
 
-      Object.keys(byCategory).sort().forEach(category => {
-        const categoryTasks = byCategory[category];
+      // Incluye las categorías base (Miami, Comercial) aunque estén vacías, salvo al buscar
+      const categoryNames = [...new Set([
+        ...Object.keys(byCategory),
+        ...(searchTerm ? [] : baseCategories)
+      ])].sort();
+
+      categoryNames.forEach(category => {
+        const categoryTasks = byCategory[category] || [];
 
         const color = getCategoryColor(category);
 
@@ -921,6 +957,13 @@
         `;
         card.appendChild(header);
 
+        if (categoryTasks.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'empty-state';
+          empty.textContent = 'Sin tareas todavía';
+          card.appendChild(empty);
+        }
+
         categoryTasks.forEach(task => {
           const item = document.createElement('div');
           item.className = `task-item state-${task.state}`;
@@ -928,7 +971,7 @@
             <div class="task-title">${task.title}</div>
             <div class="task-meta">
               <span class="task-state">${stateLabels[task.state]}</span>
-              ${task.delegated ? `<span class="task-delegated">→ ${task.delegated}</span>` : ''}
+              ${assigneeBadge(task.delegated)}
               <span class="task-date">${task.date}</span>
             </div>
           `;
@@ -974,7 +1017,7 @@
               <div class="kanban-card-title">${task.title}</div>
               <div class="kanban-card-meta">
                 <div>${task.category}</div>
-                ${task.delegated ? `<div style="color: #1fa8a6;">→ ${task.delegated}</div>` : ''}
+                ${assigneeBadge(task.delegated)}
               </div>
             `;
             card.addEventListener('click', () => openModal(task));
