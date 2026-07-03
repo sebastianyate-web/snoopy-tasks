@@ -215,6 +215,14 @@
       "state": "todo",
       "delegated": null,
       "date": "2026-07-03"
+    },
+    {
+      "id": "1783093544246",
+      "title": "Ventas totales de este y del año pasado, detallladas",
+      "category": "Comercial",
+      "state": "todo",
+      "delegated": null,
+      "date": "2026-07-03"
     }
   ]
 }
