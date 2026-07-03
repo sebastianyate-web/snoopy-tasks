@@ -207,6 +207,14 @@
       "state": "todo",
       "delegated": null,
       "date": "2026-07-03"
+    },
+    {
+      "id": "1783092696399",
+      "title": "Seguimiento pago de empaques de Raw",
+      "category": "Raw",
+      "state": "todo",
+      "delegated": null,
+      "date": "2026-07-03"
     }
   ]
 }
