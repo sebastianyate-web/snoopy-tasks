@@ -223,6 +223,14 @@
       "state": "progress",
       "delegated": null,
       "date": "2026-07-03"
+    },
+    {
+      "id": "1783361564528",
+      "title": "Prompt para fotografías de plantas",
+      "category": "Raw",
+      "state": "todo",
+      "delegated": null,
+      "date": "2026-07-06"
     }
   ]
 }
