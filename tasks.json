@@ -93,9 +93,10 @@
       "id": 12,
       "category": "Miami",
       "title": "Pruebas de germinación en Miami",
-      "state": "progress",
+      "state": "done",
       "delegated": null,
-      "date": "2026-07-02"
+      "date": "2026-07-02",
+      "priority": null
     },
     {
       "id": 13,
