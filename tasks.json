@@ -183,8 +183,9 @@
       "category": "Actualización",
       "title": "Updated global stock - clientes",
       "state": "todo",
-      "delegated": null,
-      "date": "2026-07-02"
+      "delegated": "Pau",
+      "date": "2026-07-02",
+      "priority": null
     },
     {
       "id": 24,
